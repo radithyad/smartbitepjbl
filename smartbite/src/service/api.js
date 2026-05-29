@@ -4,12 +4,13 @@ import { Platform } from 'react-native';
 
 // 👉 GANTI '192.168.X.X' DENGAN IP LAPTOP KAMU!
 // Wajib pakai http:// (bukan https) dan ujungnya wajib :5000/api
-const BASE_URL = 'http://172.20.10.5:5000/api'; 
+const BASE_URL = 'https://depose-primary-sterling.ngrok-free.dev/api'; // Contoh: 'http://192.168.X.X:5000/api'
 
 export const api = axios.create({
   baseURL: BASE_URL,
   headers: {
-    'Content-Type': 'application/json'
+    'Content-Type': 'application/json',
+    'Bypass-Tunnel-Reminder': 'true'
     // Header ngrok udah dihapus karena kita gak pake ngrok lagi
   }
 });

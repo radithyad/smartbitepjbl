@@ -1,6 +1,9 @@
 import { View, Text, StyleSheet, TextInput, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useState } from 'react';
-import { api } from '../service/api'; // 👉 Ganti supabase jadi api backend kita
+import { api } from '../service/api'; 
+
+// 🔥 Import Floating Cart komponen baru kita
+import FloatingCart from '../component/FloatingCart';
 
 export default function SearchScreen({ navigation }) {
   const [query, setQuery] = useState('');
@@ -20,7 +23,6 @@ export default function SearchScreen({ navigation }) {
     setSearched(true);
     
     try {
-      // 👉 Tembak API backend MERN kita
       const [tokoRes, menuRes] = await Promise.all([
         api.get('/toko'),
         api.get('/menu')
@@ -28,15 +30,12 @@ export default function SearchScreen({ navigation }) {
 
       const queryLower = text.toLowerCase();
 
-      // 👉 Filter manual di frontend (karena backend belum punya rute /search khusus)
       const filteredToko = (tokoRes.data || []).filter(t => 
         t.nama.toLowerCase().includes(queryLower) 
-        // && t.aktif !== false // Buka komen ini kalau kamu punya field 'aktif' di model Toko
       );
 
       const filteredMenu = (menuRes.data || []).filter(m => 
         m.nama.toLowerCase().includes(queryLower)
-        // && m.tersedia !== false // Buka komen ini kalau kamu punya field 'tersedia' di model Menu
       );
 
       setResults({ toko: filteredToko, menu: filteredMenu });
@@ -113,7 +112,6 @@ export default function SearchScreen({ navigation }) {
               <>
                 <Text style={styles.sectionTitle}>🍽 Menu ({results.menu.length})</Text>
                 {results.menu.map((menu) => {
-                  // 👉 Handle perbedaan populate di MongoDB (biasanya masuk ke menu.toko_id)
                   const tokoData = menu.toko_id || menu.toko || {}; 
 
                   return (
@@ -143,41 +141,24 @@ export default function SearchScreen({ navigation }) {
             <Text style={styles.hintSubText}>Contoh: "bakso", "Bu Sari", "mie"</Text>
           </View>
         )}
-        <View style={{ height: 30 }} />
+        <View style={{ height: 100 }} />
       </ScrollView>
+
+      {/* 🔥 FLOATING CART: Terpasang indah di paling bawah Search Screen */}
+      <FloatingCart bottom={24} />
+
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F7FA' },
-
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingTop: 55,
-    paddingBottom: 12,
-    paddingHorizontal: 16,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
-    gap: 10,
-  },
-  backButton: {
-    width: 36, height: 36, borderRadius: 18,
-    backgroundColor: '#F5F7FA',
-    justifyContent: 'center', alignItems: 'center',
-  },
+  header: { flexDirection: 'row', alignItems: 'center', paddingTop: 55, paddingBottom: 12, paddingHorizontal: 16, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#F0F0F0', gap: 10 },
+  backButton: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#F5F7FA', justifyContent: 'center', alignItems: 'center' },
   backIcon: { fontSize: 26, color: '#1a1a1a', lineHeight: 30, marginTop: -2 },
-  searchBar: {
-    flex: 1, flexDirection: 'row', alignItems: 'center',
-    backgroundColor: '#F5F7FA', borderRadius: 12,
-    paddingHorizontal: 14, paddingVertical: 10,
-    borderWidth: 1, borderColor: '#E8ECF0',
-  },
+  searchBar: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#F5F7FA', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, borderWidth: 1, borderColor: '#E8ECF0' },
   searchIcon: { fontSize: 15, marginRight: 8 },
   searchInput: { flex: 1, fontSize: 14, color: '#1a1a1a' },
-
   scrollContent: { paddingHorizontal: 20, paddingTop: 16 },
   centerContainer: { alignItems: 'center', paddingVertical: 60, gap: 10 },
   loadingText: { fontSize: 14, color: '#888' },
@@ -186,14 +167,8 @@ const styles = StyleSheet.create({
   hintEmoji: { fontSize: 60, marginBottom: 8 },
   hintText: { fontSize: 15, fontWeight: '600', color: '#1a1a1a' },
   hintSubText: { fontSize: 13, color: '#888' },
-
   sectionTitle: { fontSize: 15, fontWeight: 'bold', color: '#1a1a1a', marginBottom: 10, marginTop: 8 },
-
-  tokoCard: {
-    backgroundColor: '#fff', borderRadius: 14, padding: 14,
-    flexDirection: 'row', alignItems: 'center', marginBottom: 10,
-    elevation: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 4,
-  },
+  tokoCard: { backgroundColor: '#fff', borderRadius: 14, padding: 14, flexDirection: 'row', alignItems: 'center', marginBottom: 10, elevation: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 4 },
   tokoEmojiBox: { width: 52, height: 52, backgroundColor: '#F0F4FF', borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
   tokoInfo: { flex: 1 },
   tokoNama: { fontSize: 14, fontWeight: 'bold', color: '#1a1a1a', marginBottom: 2 },
@@ -202,13 +177,7 @@ const styles = StyleSheet.create({
   tokoMetaText: { fontSize: 12, color: '#555' },
   tokoDot: { color: '#ccc' },
   arrow: { fontSize: 24, color: '#ccc' },
-
-  menuCard: {
-    backgroundColor: '#fff', borderRadius: 14, padding: 14,
-    flexDirection: 'row', alignItems: 'center', marginBottom: 10,
-    elevation: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 4,
-    gap: 12,
-  },
+  menuCard: { backgroundColor: '#fff', borderRadius: 14, padding: 14, flexDirection: 'row', alignItems: 'center', marginBottom: 10, elevation: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 4, gap: 12 },
   menuEmojiBox: { width: 52, height: 52, backgroundColor: '#F0F4FF', borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
   menuInfo: { flex: 1 },
   menuNama: { fontSize: 14, fontWeight: 'bold', color: '#1a1a1a', marginBottom: 2 },

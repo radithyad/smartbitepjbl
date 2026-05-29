@@ -59,3 +59,63 @@ exports.updateOrderStatus = async (req, res) => {
     res.status(500).json({ message: 'Gagal update status pesanan', error: error.message });
   }
 };
+
+exports.getVendorStats = async (req, res) => {
+  try {
+    const { tokoId } = req.params;
+
+    const orderAktif = await Order.countDocuments({
+      toko_id: tokoId,
+      status: { $in: ['menunggu', 'diproses', 'siap'] }
+    });
+
+    const semuaPesananSelesai = await Order.find({
+      toko_id: tokoId,
+      status: 'selesai'
+    });
+
+    const formatter = new Intl.DateTimeFormat('id-ID', {
+      timeZone: 'Asia/Jakarta',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    });
+    
+    const todayWIB = formatter.format(new Date());
+
+    let selesaiHariIni = 0;
+    let hariIni = 0;
+
+    semuaPesananSelesai.forEach(order => {
+      const orderDate = new Date(order.updatedAt || order.createdAt);
+      
+      const orderDateWIB = formatter.format(orderDate);
+
+      if (orderDateWIB === todayWIB) {
+        selesaiHariIni++;
+        hariIni += Number(order.total_harga || 0); 
+      }
+    });
+
+    res.json({ hariIni, orderAktif, selesaiHariIni });
+  } catch (error) {
+    console.error("Error getVendorStats:", error);
+    res.status(500).json({ message: 'Terjadi kesalahan saat mengambil statistik' });
+  }
+};
+
+// ── AMBIL 5 PESANAN TERBARU ──
+exports.getRecentOrders = async (req, res) => {
+  try {
+    const { tokoId } = req.params;
+    // Ambil maksimal 5 pesanan, diurutkan dari yang paling baru dibuat
+    const recentOrders = await Order.find({ toko_id: tokoId })
+      .sort({ createdAt: -1 }) // -1 artinya descending (terbaru di atas)
+      .limit(5);
+      
+    res.json(recentOrders);
+  } catch (error) {
+    console.error("Error getRecentOrders:", error);
+    res.status(500).json({ message: 'Terjadi kesalahan saat mengambil pesanan terbaru' });
+  }
+};

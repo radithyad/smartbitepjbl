@@ -1,4 +1,5 @@
 const Toko = require('../models/Toko');
+const Order = require('../models/Order'); // Pastikan ini ada di atas
 
 // Ambil semua toko yang aktif (Buat HomeScreen customer)
 exports.getAllToko = async (req, res) => {
@@ -33,7 +34,7 @@ exports.getMyToko = async (req, res) => {
   }
 };
 
-// Update data toko (Buat VendorTokoScreen)
+// Update data toko & LOGIKA SAPU BERSIH (Buat VendorTokoScreen & Toggle)
 exports.updateToko = async (req, res) => {
   try {
     const updatedToko = await Toko.findOneAndUpdate(
@@ -41,6 +42,31 @@ exports.updateToko = async (req, res) => {
       req.body, 
       { new: true } // Biar yang di-return adalah data terbaru
     );
+
+    // 🧹 LOGIKA SAPU BERSIH OTOMATIS SAAT TOKO DITUTUP
+    if (req.body.aktif === false || String(req.body.aktif) === 'false') {
+      
+      // Kasus A: Pesanan udah 'diproses' atau 'siap' -> Otomatis 'selesai'
+      await Order.updateMany(
+        { 
+          toko_id: updatedToko._id, 
+          status: { $in: ['diproses', 'siap'] } 
+        },
+        { status: 'selesai' }
+      );
+
+      // Kasus B: Pesanan baru 'menunggu' (belum di-acc) -> Otomatis 'ditolak'
+      await Order.updateMany(
+        { 
+          toko_id: updatedToko._id, 
+          status: 'menunggu' 
+        },
+        { status: 'ditolak' }
+      );
+      
+      console.log(`[SYSTEM] Toko ${updatedToko.nama} tutup. Pesanan disapu bersih!`);
+    }
+
     res.json({ message: 'Toko berhasil diupdate!', toko: updatedToko });
   } catch (error) {
     res.status(500).json({ message: 'Gagal update toko', error: error.message });
@@ -60,4 +86,3 @@ exports.createToko = async (req, res) => {
     res.status(500).json({ message: 'Gagal membuat toko', error: error.message });
   }
 };
-

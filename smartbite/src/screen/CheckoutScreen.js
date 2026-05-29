@@ -7,6 +7,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import { useState } from 'react';
 import { api } from '../service/api'; // 👈 Ubah supabase jadi api
+import { useContext } from 'react';
+import { CartContext } from '../context/CartContext';
 
 const PAYMENT_INFO = {
   '1': { qris: 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=BuSari-QRIS-001', norek: 'BCA 1234567890 a/n Sari' },
@@ -24,6 +26,7 @@ const METODE_BAYAR = [
 
 export default function CheckoutScreen({ route, navigation }) {
   const { keranjang, menuList, toko, totalHarga } = route.params;
+  const { setKeranjang, setToko, setMenuList } = useContext(CartContext);
   const [catatan, setCatatan] = useState('');
   const [metodeBayar, setMetodeBayar] = useState('tunai');
   const [dropdownOpen, setDropdownOpen] = useState(null);
@@ -106,6 +109,10 @@ export default function CheckoutScreen({ route, navigation }) {
         // Tembak API Buatan kita
         const response = await api.post('/orders', orderPayload);
         const orderData = response.data.order;
+
+        setKeranjang({});
+        setToko(null);
+        setMenuList([]);
         
         navigation.navigate('StatusOrder', {
           toko, totalHarga, catatan,
