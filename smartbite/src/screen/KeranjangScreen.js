@@ -79,7 +79,6 @@ export default function KeranjangScreen({ route, navigation }) {
             <View style={styles.itemImageBox}><Text style={{ fontSize: 28 }}>{menu.emoji || '🍽️'}</Text></View>
             <View style={styles.itemInfo}>
               <Text numberOfLines={1} style={styles.itemNama}>{menu.nama}</Text>
-              <Text style={styles.itemSatuan}>Rp {menu.harga ? menu.harga.toLocaleString('id-ID') : '0'} / porsi</Text>
               <Text style={styles.itemHarga}>Rp {(menu.harga * keranjang[menu._id || menu.id]).toLocaleString('id-ID')}</Text>
             </View>
             <View style={styles.counterBox}>
