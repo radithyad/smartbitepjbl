@@ -8,12 +8,18 @@ export default function FloatingCart({ bottom = 90 }) {
   const navigation = useNavigation();
   const { keranjang, toko, menuList } = useContext(CartContext);
 
+  // 🔥 PERBAIKAN: Fungsi rekursif untuk mencari tahu nama Tab/Screen terdalam yang sedang aktif
   const currentTabName = useNavigationState((state) => {
     if (!state) return null;
-    return state.routes[state.index]?.name;
+    let currentRoute = state.routes[state.index];
+    // Gali terus sampai ketemu rute yang paling ujung (aktif)
+    while (currentRoute.state && currentRoute.state.index !== undefined) {
+      currentRoute = currentRoute.state.routes[currentRoute.state.index];
+    }
+    return currentRoute.name;
   });
 
-  // 🔥 1. Siapkan mesin animasi
+  // 1. Siapkan mesin animasi
   const keyboardOffset = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -23,27 +29,24 @@ export default function FloatingCart({ bottom = 90 }) {
 
     const onKeyboardShow = (e) => {
       Animated.timing(keyboardOffset, {
-        // Naik ke atas sejauh tinggi keyboard
         toValue: -e.endCoordinates.height + (Platform.OS === 'android' ? 24 : 10),
         duration: e.duration || 250,
-        useNativeDriver: true, // Wajib true biar animasinya super mulus tanpa ngelag
+        useNativeDriver: true, 
       }).start();
     };
 
     const onKeyboardHide = () => {
       Animated.timing(keyboardOffset, {
-        toValue: 0, // Turun lagi ke posisi semula
+        toValue: 0, 
         duration: 250,
         useNativeDriver: true,
       }).start();
     };
 
-    // Daftarkan listener
     const showSub = Keyboard.addListener(showEvent, onKeyboardShow);
     const hideSub = Keyboard.addListener(hideEvent, onKeyboardHide);
 
     return () => {
-      // Bersihkan listener saat komponen tidak dipakai
       showSub.remove();
       hideSub.remove();
     };
@@ -51,6 +54,7 @@ export default function FloatingCart({ bottom = 90 }) {
 
   const totalItem = Object.values(keranjang).reduce((a, b) => a + b, 0);
   
+  // 🔥 Sekarang dia bakal beneran HILANG kalau masuk Profil atau KeranjangTab!
   if (totalItem === 0 || !toko || currentTabName === 'Profil' || currentTabName === 'KeranjangTab') {
     return null;
   }
@@ -60,7 +64,6 @@ export default function FloatingCart({ bottom = 90 }) {
   }, 0);
 
   return (
-    // 🔥 2. Ubah View biasa menjadi Animated.View dan suntikkan transform translateY
     <Animated.View style={[styles.keranjangBar, { bottom, transform: [{ translateY: keyboardOffset }] }]}>
       <TouchableOpacity
         style={styles.keranjangButton}
@@ -73,15 +76,13 @@ export default function FloatingCart({ bottom = 90 }) {
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
         >
-          {/* Teks informatif di tengah */}
           <View style={styles.textContainer}>
             <Text style={styles.keranjangText}>{totalItem} Item</Text>
             <Text style={styles.keranjangSubText} numberOfLines={1}>
-              {toko.nama}
+              Dari kantin {toko.nama}
             </Text>
           </View>
 
-          {/* Total Harga di kanan */}
           <Text style={styles.keranjangHarga}>
             Rp {totalHarga.toLocaleString('id-ID')}
           </Text>
@@ -119,18 +120,18 @@ const styles = StyleSheet.create({
   },
   keranjangText: { 
     color: '#fff', 
-    fontSize: 14, 
+    fontSize: 16, 
     fontWeight: 'bold' 
   },
   keranjangSubText: { 
     color: 'rgba(255,255,255,0.85)', 
-    fontSize: 11, 
+    fontSize: 12, 
     marginTop: 2,
     fontWeight: '500'  
   },
   keranjangHarga: { 
     color: '#fff', 
-    fontSize: 15, 
+    fontSize: 16, 
     fontWeight: '700' 
   },
 });

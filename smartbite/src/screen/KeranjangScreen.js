@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native'; // 🔥 Jangan lupa import Image
 import { LinearGradient } from 'expo-linear-gradient';
 import { useContext } from 'react';
 import { CartContext } from '../context/CartContext';
@@ -30,7 +30,6 @@ export default function KeranjangScreen({ route, navigation }) {
     return (
       <View style={styles.container}>
         <View style={styles.header}>
-          {/* 🔥 Tombol Back sekarang ditambahkan di kondisi kosong! */}
           {!isTab && (
             <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.8} style={styles.backButton}>
               <Text style={styles.backIcon}>‹</Text>
@@ -43,7 +42,6 @@ export default function KeranjangScreen({ route, navigation }) {
         <View style={styles.emptyContainer}>
           <Text style={styles.emptyEmoji}>🛒</Text>
           <Text style={styles.emptyText}>Keranjang kamu masih kosong</Text>
-          {/* 🔥 Navigasi diarahkan masuk ke Main (Tab) dulu baru ke Home */}
           <TouchableOpacity onPress={() => navigation.navigate('Main', { screen: 'Home' })} activeOpacity={0.8}>
             <Text style={styles.emptyLink}>Cari makanan enak dulu yuk!</Text>
           </TouchableOpacity>
@@ -76,7 +74,16 @@ export default function KeranjangScreen({ route, navigation }) {
         <Text style={styles.sectionTitle}>Pesanan kamu</Text>
         {itemDiKeranjang.map((menu) => (
           <View key={menu._id || menu.id} style={styles.itemCard}>
-            <View style={styles.itemImageBox}><Text style={{ fontSize: 28 }}>{menu.emoji || '🍽️'}</Text></View>
+            
+            {/* 🔥 FOTO MENU DITAMPILKAN DI SINI */}
+            <View style={styles.itemImageBox}>
+              {menu.foto_url ? (
+                <Image source={{ uri: menu.foto_url }} style={styles.itemImage} resizeMode="cover" />
+              ) : (
+                <Text style={{ fontSize: 28 }}>{menu.emoji || '🍽️'}</Text>
+              )}
+            </View>
+
             <View style={styles.itemInfo}>
               <Text numberOfLines={1} style={styles.itemNama}>{menu.nama}</Text>
               <Text style={styles.itemHarga}>Rp {(menu.harga * keranjang[menu._id || menu.id]).toLocaleString('id-ID')}</Text>
@@ -105,7 +112,6 @@ export default function KeranjangScreen({ route, navigation }) {
       <View style={[styles.checkoutBar, { bottom: isTab ? 95 : 24 }]}>
         <TouchableOpacity activeOpacity={0.9} style={styles.checkoutButton} onPress={() => navigation.navigate('Checkout', { keranjang, menuList, toko, totalHarga })}>
           <LinearGradient colors={['#1565C0', '#42A5F5']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.checkoutGradient}>
-            <View style={styles.checkoutBadge}><Text style={styles.checkoutBadgeText}>{totalItem}</Text></View>
             <Text style={styles.checkoutText}>Lanjut ke Checkout</Text>
             <Text style={styles.checkoutHarga}>Rp {totalHarga.toLocaleString('id-ID')}</Text>
           </LinearGradient>
@@ -129,8 +135,13 @@ const styles = StyleSheet.create({
   emptyLink: { fontSize: 14, color: '#1565C0', fontWeight: '600' },
   scrollContent: { paddingHorizontal: 20, paddingTop: 20 },
   sectionTitle: { fontSize: 17, fontWeight: 'bold', color: '#1a1a1a', marginBottom: 14 },
+  
   itemCard: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#F5F5F5' },
+  
+  // 🔥 Style tambahan untuk Image Item
   itemImageBox: { width: 64, height: 64, borderRadius: 14, backgroundColor: '#F5F7FA', justifyContent: 'center', alignItems: 'center', marginRight: 12, overflow: 'hidden' },
+  itemImage: { width: '100%', height: '100%' }, // Memastikan foto pas memenuhi kotak
+  
   itemInfo: { flex: 1 },
   itemNama: { fontSize: 14, fontWeight: 'bold', color: '#1a1a1a', marginBottom: 2 },
   itemSatuan: { fontSize: 11, color: '#aaa', marginBottom: 3 },
@@ -151,8 +162,6 @@ const styles = StyleSheet.create({
   checkoutBar: { position: 'absolute', left: 20, right: 20 },
   checkoutButton: { borderRadius: 16, overflow: 'hidden', elevation: 8, shadowColor: '#1565C0', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.35, shadowRadius: 10 },
   checkoutGradient: { flexDirection: 'row', alignItems: 'center', paddingVertical: 16, paddingHorizontal: 20 },
-  checkoutBadge: { backgroundColor: '#fff', borderRadius: 10, width: 28, height: 28, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
-  checkoutBadgeText: { color: '#1565C0', fontWeight: 'bold', fontSize: 13 },
-  checkoutText: { flex: 1, color: '#fff', fontSize: 15, fontWeight: 'bold' },
-  checkoutHarga: { color: '#fff', fontSize: 14, fontWeight: '700' },
+  checkoutText: { flex: 1, color: '#fff', fontSize: 18, fontWeight: 'bold' },
+  checkoutHarga: { color: '#fff', fontSize: 16, fontWeight: '700' },
 });

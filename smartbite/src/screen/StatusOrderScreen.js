@@ -345,7 +345,7 @@ const styles = StyleSheet.create({
 
   // ── Order Detail (PAKAI FOTO MENU) ────────────────────
   orderRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 14, gap: 12 },
-  orderImageBox: { width: 48, height: 48, borderRadius: 12, backgroundColor: '#F5F7FA', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' },
+  orderImageBox: { width: 64, height: 64, borderRadius: 12, backgroundColor: '#F5F7FA', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' },
   orderImage: { width: '100%', height: '100%' },
   orderTextWrapper: { flex: 1, justifyContent: 'center' },
   orderNama: { fontSize: 14, color: '#1a1a1a', fontWeight: '600', marginBottom: 2 },

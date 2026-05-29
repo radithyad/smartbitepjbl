@@ -1,14 +1,15 @@
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   TextInput, Alert, Image, ActivityIndicator,
-  Platform,
+  Platform, KeyboardAvoidingView // 👈 Tambah import ini
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import { useState } from 'react';
-import { api } from '../service/api'; // 👈 Ubah supabase jadi api
+import { api } from '../service/api'; 
 import { useContext } from 'react';
 import { CartContext } from '../context/CartContext';
+import { Ionicons } from '@expo/vector-icons';
 
 const PAYMENT_INFO = {
   '1': { qris: 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=BuSari-QRIS-001', norek: 'BCA 1234567890 a/n Sari' },
@@ -19,9 +20,9 @@ const PAYMENT_INFO = {
 };
 
 const METODE_BAYAR = [
-  { id: 'qris', label: 'QRIS', emoji: '📱', desc: 'Scan QR code toko' },
-  { id: 'transfer', label: 'Transfer Bank', emoji: '🏦', desc: 'Transfer ke rekening toko' },
-  { id: 'tunai', label: 'Tunai', emoji: '💵', desc: 'Bayar langsung saat pickup' },
+  { id: 'qris', label: 'QRIS', icon: 'qr-code-outline', desc: 'Scan QR code toko' },
+  { id: 'transfer', label: 'Transfer Bank', icon: 'swap-horizontal-outline', desc: 'Transfer ke rekening toko' },
+  { id: 'tunai', label: 'Tunai', icon: 'cash-outline', desc: 'Bayar langsung saat pickup' },
 ];
 
 export default function CheckoutScreen({ route, navigation }) {
@@ -35,7 +36,6 @@ export default function CheckoutScreen({ route, navigation }) {
 
   const itemDiKeranjang = menuList.filter(m => keranjang[m._id || m.id]);
   
-  // Karena ID dari MongoDB panjang, kita kasih fallback ke '1' biar Dummy QRIS tetep muncul
   const paymentInfo = PAYMENT_INFO[toko._id || toko.id] || PAYMENT_INFO['1']; 
   
   const butuhBukti = metodeBayar === 'qris' || metodeBayar === 'transfer';
@@ -51,7 +51,6 @@ export default function CheckoutScreen({ route, navigation }) {
     }
   };
 
-  // 👈 Fungsi upload kita ganti pakai Base64 biar instan dan gak perlu storage external
   const handleUploadBukti = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
@@ -62,14 +61,13 @@ export default function CheckoutScreen({ route, navigation }) {
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       quality: 0.3,
-      base64: true // Tambahkan ini
+      base64: true 
     });
     
     if (result.canceled) return;
     setUploading(true);
     
     try {
-      // Simpan langsung sebagai string base64
       setBuktiBayar(`data:image/jpeg;base64,${result.assets[0].base64}`);
     } catch (err) {
       Alert.alert('Upload Gagal', 'Terjadi kesalahan saat memproses foto.');
@@ -89,9 +87,8 @@ export default function CheckoutScreen({ route, navigation }) {
 
     const onConfirm = async () => {
       try {
-        setUploading(true); // Pakai state ini buat muterin loading kalau mau
+        setUploading(true); 
         
-        // 👈 Kita satukan data pesanan & itemnya buat dikirim ke Node.js
         const orderPayload = {
           toko_id: toko._id || toko.id,
           total_harga: totalHarga,
@@ -106,7 +103,6 @@ export default function CheckoutScreen({ route, navigation }) {
           }))
         };
 
-        // Tembak API Buatan kita
         const response = await api.post('/orders', orderPayload);
         const orderData = response.data.order;
 
@@ -122,7 +118,6 @@ export default function CheckoutScreen({ route, navigation }) {
         });
       } catch (err) {
         console.log("❌ ERROR CHECKOUT:", err.response?.data || err.message);
-        const pesanError = err.response?.data?.error || err.response?.data?.message || 'Terjadi kesalahan!';
         Alert.alert('Gagal Memesan', err.response?.data?.message || 'Terjadi kesalahan, coba lagi ya!');
       } finally {
         setUploading(false);
@@ -131,9 +126,7 @@ export default function CheckoutScreen({ route, navigation }) {
 
     if (Platform.OS === 'web') {
       const confirmed = window.confirm(`${title}\n\n${message}`);
-      if (confirmed) {
-        await onConfirm();
-      }
+      if (confirmed) await onConfirm();
     } else {
       Alert.alert(title, message, [
         { text: 'Batal', style: 'cancel' },
@@ -143,7 +136,8 @@ export default function CheckoutScreen({ route, navigation }) {
   };
 
   return (
-    <View style={styles.container}>
+    // 🔥 Bungkus seluruh tampilan dengan KeyboardAvoidingView sama seperti di LoginScreen
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
 
       {/* Header */}
       <View style={styles.header}>
@@ -152,22 +146,30 @@ export default function CheckoutScreen({ route, navigation }) {
         </TouchableOpacity>
         <View style={styles.headerCenter}>
           <Text style={styles.headerTitle}>Checkout</Text>
-          <Text style={styles.headerSub}>Periksa & konfirmasi pesanan</Text>
         </View>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+      {/* Tambahkan keyboardShouldPersistTaps="handled" biar gampang nutup keyboard */}
+      <ScrollView 
+        showsVerticalScrollIndicator={false} 
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+      >
 
         {/* Ringkasan Pesanan */}
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>🧾 Ringkasan Pesanan</Text>
+          <View style={styles.cardTitleRow}>
+            <Ionicons name="receipt-outline" size={18} color="#1a1a1a" />
+            <Text style={styles.cardTitle}>Ringkasan Pesanan</Text>
+          </View>
+          
           {itemDiKeranjang.map((menu) => (
             <View key={menu._id || menu.id} style={styles.orderRow}>
               <View style={styles.orderImageBox}>
                 {menu.foto_url ? (
                   <Image source={{ uri: menu.foto_url }} style={styles.orderImage} resizeMode="cover" />
                 ) : (
-                  <Text style={{ fontSize: 20 }}>{menu.emoji}</Text>
+                  <Ionicons name="fast-food-outline" size={20} color="#666" />
                 )}
               </View>
               <Text style={styles.orderNama} numberOfLines={1}>{menu.nama}</Text>
@@ -186,7 +188,11 @@ export default function CheckoutScreen({ route, navigation }) {
 
         {/* Metode Pembayaran */}
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>💳 Metode Pembayaran</Text>
+          <View style={styles.cardTitleRow}>
+            <Ionicons name="card-outline" size={18} color="#1a1a1a" />
+            <Text style={styles.cardTitle}>Metode Pembayaran</Text>
+          </View>
+          
           {METODE_BAYAR.map((metode) => (
             <View key={metode.id}>
               <TouchableOpacity
@@ -194,7 +200,11 @@ export default function CheckoutScreen({ route, navigation }) {
                 onPress={() => handlePilihMetode(metode.id)}
                 activeOpacity={0.8}
               >
-                <Text style={styles.metodeEmoji}>{metode.emoji}</Text>
+                <Ionicons 
+                  name={metode.icon} 
+                  size={24} 
+                  color={metodeBayar === metode.id ? '#1565C0' : '#888'} 
+                />
                 <View style={styles.metodeInfo}>
                   <Text style={[styles.metodeLabel, metodeBayar === metode.id && styles.metodeLabelActive]}>
                     {metode.label}
@@ -203,9 +213,11 @@ export default function CheckoutScreen({ route, navigation }) {
                 </View>
                 <View style={styles.metodeRight}>
                   {(metode.id === 'qris' || metode.id === 'transfer') && (
-                    <Text style={styles.dropdownArrow}>
-                      {metodeBayar === metode.id && dropdownOpen === metode.id ? '▲' : '▼'}
-                    </Text>
+                    <Ionicons 
+                      name={metodeBayar === metode.id && dropdownOpen === metode.id ? "chevron-up" : "chevron-down"} 
+                      size={16} 
+                      color="#1565C0" 
+                    />
                   )}
                   <View style={[styles.radioOuter, metodeBayar === metode.id && styles.radioOuterActive]}>
                     {metodeBayar === metode.id && <View style={styles.radioInner} />}
@@ -239,15 +251,20 @@ export default function CheckoutScreen({ route, navigation }) {
         {/* Upload Bukti */}
         {butuhBukti && (
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>📎 Bukti Pembayaran</Text>
+            <View style={styles.cardTitleRow}>
+              <Ionicons name="image-outline" size={18} color="#1a1a1a" />
+              <Text style={styles.cardTitle}>Bukti Pembayaran</Text>
+            </View>
             <Text style={styles.uploadDesc}>
               Upload screenshot bukti {metodeBayar === 'qris' ? 'pembayaran QRIS' : 'transfer'} kamu
             </Text>
+            
             {buktiBayar ? (
               <View style={styles.previewContainer}>
                 <Image source={{ uri: buktiBayar }} style={styles.previewImage} resizeMode="cover" />
                 <TouchableOpacity style={styles.gantiButton} onPress={handleUploadBukti}>
-                  <Text style={styles.gantiText}>🔄 Ganti Foto</Text>
+                  <Ionicons name="refresh-outline" size={16} color="#1565C0" style={{ marginRight: 6 }} />
+                  <Text style={styles.gantiText}>Ganti Foto</Text>
                 </TouchableOpacity>
               </View>
             ) : (
@@ -256,16 +273,18 @@ export default function CheckoutScreen({ route, navigation }) {
                   <ActivityIndicator color="#1565C0" />
                 ) : (
                   <>
-                    <Text style={styles.uploadEmoji}>📷</Text>
+                    <Ionicons name="camera-outline" size={36} color="#1565C0" style={{ marginBottom: 8 }} />
                     <Text style={styles.uploadText}>Tap untuk pilih foto</Text>
                     <Text style={styles.uploadSubText}>dari galeri HP kamu</Text>
                   </>
                 )}
               </TouchableOpacity>
             )}
+            
             {!buktiBayar && (
               <View style={styles.warnBox}>
-                <Text style={styles.warnText}>⚠️ Wajib upload bukti pembayaran sebelum memesan</Text>
+                <Ionicons name="alert-circle-outline" size={16} color="#E65100" />
+                <Text style={styles.warnText}>Wajib upload bukti pembayaran sebelum memesan</Text>
               </View>
             )}
           </View>
@@ -273,10 +292,13 @@ export default function CheckoutScreen({ route, navigation }) {
 
         {/* Catatan */}
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>📝 Catatan (opsional)</Text>
+          <View style={styles.cardTitleRow}>
+            <Ionicons name="document-text-outline" size={18} color="#1a1a1a" />
+            <Text style={styles.cardTitle}>Catatan untuk penjual</Text>
+          </View>
           <TextInput
             style={styles.catatanInput}
-            placeholder="Contoh: jangan pakai sambal, tambah kerupuk, dll..."
+            placeholder="Contoh: jangan terlalu manis, soalnya aku udah manis 😝"
             placeholderTextColor="#aaa"
             multiline
             numberOfLines={3}
@@ -284,17 +306,6 @@ export default function CheckoutScreen({ route, navigation }) {
             onChangeText={setCatatan}
           />
         </View>
-
-        {/* Pickup Info */}
-        <View style={styles.pickupInfo}>
-          <Text style={styles.pickupEmoji}>🏃</Text>
-          <View>
-            <Text style={styles.pickupTitle}>Pickup Mandiri</Text>
-            <Text style={styles.pickupDesc}>Jangan lupa ambil langsung pesanan anda setelah pesanan telah siap</Text>
-          </View>
-        </View>
-
-        <View style={{ height: 110 }} />
       </ScrollView>
 
       {/* Tombol Pesan */}
@@ -310,21 +321,22 @@ export default function CheckoutScreen({ route, navigation }) {
                <ActivityIndicator color="#fff" style={{flex: 1}} />
             ) : (
               <>
-                <Text style={styles.orderText}>
-                  {bisaPesan ? '🍱 Pesan Sekarang' : '🔒 Upload Bukti Dulu'}
-                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  {!bisaPesan && <Ionicons name="lock-closed" size={18} color="#fff" style={{ marginRight: 8 }} />}
+                  <Text style={styles.orderText}>
+                    {bisaPesan ? 'Pesan Sekarang' : 'Upload Bukti Dulu'}
+                  </Text>
+                </View>
                 <Text style={styles.orderHargaText}>Rp {totalHarga.toLocaleString('id-ID')}</Text>
               </>
             )}
           </LinearGradient>
         </TouchableOpacity>
       </View>
-
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
-// ⬇️ STYLE MURNI GAK ADA YANG DISENTUH ⬇️
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -379,11 +391,16 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 4,
   },
+  cardTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 14,
+  },
   cardTitle: {
     fontSize: 15,
     fontWeight: 'bold',
     color: '#1a1a1a',
-    marginBottom: 14,
   },
 
   // ── Order Row ─────────────────────────────────────────
@@ -423,13 +440,11 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   metodeItemActive: { borderColor: '#1565C0', backgroundColor: '#F0F7FF' },
-  metodeEmoji: { fontSize: 22 },
   metodeInfo: { flex: 1 },
   metodeLabel: { fontSize: 14, fontWeight: '600', color: '#1a1a1a' },
   metodeLabelActive: { color: '#1565C0' },
   metodeDesc: { fontSize: 11, color: '#888', marginTop: 2 },
   metodeRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  dropdownArrow: { fontSize: 12, color: '#1565C0' },
   radioOuter: {
     width: 20, height: 20, borderRadius: 10,
     borderWidth: 2, borderColor: '#ccc',
@@ -468,17 +483,20 @@ const styles = StyleSheet.create({
     padding: 28, alignItems: 'center',
     backgroundColor: '#F0F7FF',
   },
-  uploadEmoji: { fontSize: 36, marginBottom: 8 },
   uploadText: { fontSize: 14, fontWeight: '600', color: '#1565C0' },
   uploadSubText: { fontSize: 12, color: '#888', marginTop: 4 },
   previewContainer: { alignItems: 'center' },
   previewImage: { width: '100%', height: 200, borderRadius: 12, marginBottom: 10 },
   gantiButton: {
+    flexDirection: 'row', alignItems: 'center',
     backgroundColor: '#E3F2FD', borderRadius: 10,
     paddingVertical: 8, paddingHorizontal: 20,
   },
   gantiText: { color: '#1565C0', fontWeight: '600', fontSize: 13 },
-  warnBox: { backgroundColor: '#FFF3E0', borderRadius: 10, padding: 10, marginTop: 12 },
+  warnBox: { 
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    backgroundColor: '#FFF3E0', borderRadius: 10, padding: 10, marginTop: 12 
+  },
   warnText: { fontSize: 12, color: '#E65100', textAlign: 'center' },
 
   // ── Catatan ───────────────────────────────────────────
@@ -497,9 +515,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center',
     gap: 12, marginBottom: 12,
   },
-  pickupEmoji: { fontSize: 26 },
+  pickupIconBox: {
+    width: 44, height: 44, borderRadius: 12,
+    backgroundColor: '#fff',
+    justifyContent: 'center', alignItems: 'center',
+  },
   pickupTitle: { fontSize: 13, fontWeight: 'bold', color: '#1565C0' },
-  pickupDesc: { fontSize: 12, color: '#555', marginTop: 2 },
+  pickupDesc: { fontSize: 12, color: '#555', marginTop: 2, lineHeight: 18 },
 
   // ── Order Bar ─────────────────────────────────────────
   orderBar: {
@@ -519,6 +541,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 16, paddingHorizontal: 20,
   },
-  orderText: { color: '#fff', fontSize: 15, fontWeight: 'bold' },
-  orderHargaText: { color: '#fff', fontSize: 14, fontWeight: '700' },
+  orderText: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
+  orderHargaText: { color: '#fff', fontSize: 16, fontWeight: '700' },
 });

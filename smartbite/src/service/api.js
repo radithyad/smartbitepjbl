@@ -4,7 +4,7 @@ import { Platform } from 'react-native';
 
 // 👉 GANTI '192.168.X.X' DENGAN IP LAPTOP KAMU!
 // Wajib pakai http:// (bukan https) dan ujungnya wajib :5000/api
-const BASE_URL = 'https://smartbite-radithya4.loca.lt/api'; // Contoh: 'http://192.168.X.X:5000/api'
+const BASE_URL = 'https://dainty-matching-visiting.ngrok-free.dev/api'; // Contoh: 'http://192.168.X.X:5000/api'
 
 export const api = axios.create({
   baseURL: BASE_URL,
