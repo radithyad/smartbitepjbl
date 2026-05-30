@@ -25,6 +25,7 @@ import SearchScreen from './src/screen/SearchScreen';
 import UlasanScreen from './src/screen/UlasanScreen';
 import SplashScreen from './src/screen/SplashScreen';
 import EditProfilScreen from './src/screen/EditProfilScreen';
+import RoomChatScreen from './src/screen/RoomChatScreen';
 
 import VendorDashboardScreen from './src/screen/vendor/VendorDashboardScreen';
 import VendorPesananScreen from './src/screen/vendor/VendorPesananScreen';
@@ -78,7 +79,7 @@ function MainTab({ onLogout }) {
         {/* 🔥 GAK ADA LAGI TRIK LISTENER! Langsung pasang KeranjangScreen di sini biar bottom nav-nya tetap ada */}
         <Tab.Screen name="KeranjangTab" component={KeranjangScreen} options={{ tabBarLabel: 'Keranjang', tabBarLabelStyle: styles.labelStyle }} />
         
-        <Tab.Screen name="Chat" component={ChatScreen} options={{ tabBarLabel: 'Pesan', tabBarLabelStyle: styles.labelStyle }} />
+        <Tab.Screen name="Chat" component={ChatScreen} options={{ tabBarLabel: 'Chat', tabBarLabelStyle: styles.labelStyle }} />
         <Tab.Screen name="Profil" options={{ tabBarLabel: 'Profil', tabBarLabelStyle: styles.labelStyle }}>
           {props => <ProfilScreen {...props} onLogout={onLogout} />}
         </Tab.Screen>
@@ -237,6 +238,7 @@ export default function App() {
               <Stack.Screen name="Search"      component={SearchScreen} />
               <Stack.Screen name="Ulasan"      component={UlasanScreen} />
               <Stack.Screen name="EditProfil"  component={EditProfilScreen} />
+              <Stack.Screen name="RoomChat" component={RoomChatScreen} />
             </>
           )}
         </Stack.Navigator>

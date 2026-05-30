@@ -9,7 +9,7 @@ import { useState } from 'react';
 import { api } from '../service/api'; 
 import { useContext } from 'react';
 import { CartContext } from '../context/CartContext';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, Feather } from '@expo/vector-icons';
 
 const PAYMENT_INFO = {
   '1': { qris: 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=BuSari-QRIS-001', norek: 'BCA 1234567890 a/n Sari' },
@@ -263,8 +263,8 @@ export default function CheckoutScreen({ route, navigation }) {
               <View style={styles.previewContainer}>
                 <Image source={{ uri: buktiBayar }} style={styles.previewImage} resizeMode="cover" />
                 <TouchableOpacity style={styles.gantiButton} onPress={handleUploadBukti}>
-                  <Ionicons name="refresh-outline" size={16} color="#1565C0" style={{ marginRight: 6 }} />
-                  <Text style={styles.gantiText}>Ganti Foto</Text>
+                  <Feather name="upload" size={16} color="#1565C0" style={{ marginRight: 6 }} />
+                  <Text style={styles.gantiText}>Upload Ulang Foto</Text>
                 </TouchableOpacity>
               </View>
             ) : (
@@ -273,9 +273,8 @@ export default function CheckoutScreen({ route, navigation }) {
                   <ActivityIndicator color="#1565C0" />
                 ) : (
                   <>
-                    <Ionicons name="camera-outline" size={36} color="#1565C0" style={{ marginBottom: 8 }} />
-                    <Text style={styles.uploadText}>Tap untuk pilih foto</Text>
-                    <Text style={styles.uploadSubText}>dari galeri HP kamu</Text>
+                    <Feather name="upload" size={36} color="#1565C0" style={{ marginBottom: 8 }} />
+                    <Text style={styles.uploadText}>Tap untuk upload foto</Text>
                   </>
                 )}
               </TouchableOpacity>

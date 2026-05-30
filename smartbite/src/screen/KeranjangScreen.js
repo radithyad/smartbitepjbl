@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native'; // 🔥 Jangan lupa import Image
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native'; 
 import { LinearGradient } from 'expo-linear-gradient';
 import { useContext } from 'react';
 import { CartContext } from '../context/CartContext';
@@ -29,16 +29,23 @@ export default function KeranjangScreen({ route, navigation }) {
   if (!toko || Object.keys(keranjang).length === 0) {
     return (
       <View style={styles.container}>
-        <View style={styles.header}>
-          {!isTab && (
+        
+        {/* 🔥 HEADER DINAMIS (KOSONG) */}
+        {isTab ? (
+          <View style={styles.headerTab}>
+            <Text style={styles.headerTitleTab}>Keranjang</Text>
+          </View>
+        ) : (
+          <View style={styles.header}>
             <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.8} style={styles.backButton}>
               <Text style={styles.backIcon}>‹</Text>
             </TouchableOpacity>
-          )}
-          <View style={styles.headerCenter}>
-            <Text style={styles.headerTitle}>Keranjang</Text>
+            <View style={styles.headerCenter}>
+              <Text style={styles.headerTitle}>Keranjang</Text>
+            </View>
           </View>
-        </View>
+        )}
+
         <View style={styles.emptyContainer}>
           <Text style={styles.emptyEmoji}>🛒</Text>
           <Text style={styles.emptyText}>Keranjang kamu masih kosong</Text>
@@ -58,24 +65,30 @@ export default function KeranjangScreen({ route, navigation }) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        {!isTab && (
+      
+      {/* 🔥 HEADER DINAMIS (ADA ISI) */}
+      {isTab ? (
+        <View style={styles.headerTab}>
+          <Text style={styles.headerTitleTab}>Keranjang</Text>
+          <Text style={styles.headerSubTab}>Pesanan dari {toko.nama}</Text>
+        </View>
+      ) : (
+        <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.8} style={styles.backButton}>
             <Text style={styles.backIcon}>‹</Text>
           </TouchableOpacity>
-        )}
-        <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>Keranjang</Text>
-          <Text style={styles.headerSub}>{toko.nama}</Text>
+          <View style={styles.headerCenter}>
+            <Text style={styles.headerTitle}>Keranjang</Text>
+            <Text style={styles.headerSub}>Pesanan dari {toko.nama}</Text>
+          </View>
         </View>
-      </View>
+      )}
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.scrollContent, { paddingBottom: isTab ? 190 : 100 }]}>
         <Text style={styles.sectionTitle}>Pesanan kamu</Text>
         {itemDiKeranjang.map((menu) => (
           <View key={menu._id || menu.id} style={styles.itemCard}>
             
-            {/* 🔥 FOTO MENU DITAMPILKAN DI SINI */}
             <View style={styles.itemImageBox}>
               {menu.foto_url ? (
                 <Image source={{ uri: menu.foto_url }} style={styles.itemImage} resizeMode="cover" />
@@ -123,24 +136,31 @@ export default function KeranjangScreen({ route, navigation }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
+  
+  // 🔥 STYLES HEADER NORMAL (Stack Screen)
   header: { flexDirection: 'row', alignItems: 'center', paddingTop: 55, paddingBottom: 16, paddingHorizontal: 16, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#F0F0F0' },
   backButton: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#F5F7FA', justifyContent: 'center', alignItems: 'center', marginRight: 12 },
   backIcon: { fontSize: 26, color: '#1a1a1a', lineHeight: 30, marginTop: -2 },
   headerCenter: { flex: 1 },
   headerTitle: { fontSize: 18, fontWeight: 'bold', color: '#1a1a1a' },
   headerSub: { fontSize: 12, color: '#888', marginTop: 1 },
+  
+  // 🔥 STYLES HEADER TAB BARU
+  headerTab: { paddingTop: 60, paddingBottom: 16, paddingHorizontal: 20, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#F0F0F0' },
+  headerTitleTab: { fontSize: 24, fontWeight: 'bold', color: '#1a1a1a' },
+  headerSubTab: { fontSize: 13, color: '#888', marginTop: 2 },
+
   emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   emptyEmoji: { fontSize: 60, marginBottom: 16 },
   emptyText: { fontSize: 16, color: '#888', marginBottom: 10 },
   emptyLink: { fontSize: 14, color: '#1565C0', fontWeight: '600' },
+  
   scrollContent: { paddingHorizontal: 20, paddingTop: 20 },
   sectionTitle: { fontSize: 17, fontWeight: 'bold', color: '#1a1a1a', marginBottom: 14 },
   
   itemCard: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#F5F5F5' },
-  
-  // 🔥 Style tambahan untuk Image Item
   itemImageBox: { width: 64, height: 64, borderRadius: 14, backgroundColor: '#F5F7FA', justifyContent: 'center', alignItems: 'center', marginRight: 12, overflow: 'hidden' },
-  itemImage: { width: '100%', height: '100%' }, // Memastikan foto pas memenuhi kotak
+  itemImage: { width: '100%', height: '100%' }, 
   
   itemInfo: { flex: 1 },
   itemNama: { fontSize: 14, fontWeight: 'bold', color: '#1a1a1a', marginBottom: 2 },
@@ -151,6 +171,7 @@ const styles = StyleSheet.create({
   counterBtnAdd: { backgroundColor: '#1565C0' },
   counterBtnText: { fontSize: 18, color: '#1565C0', fontWeight: 'bold', lineHeight: 22 },
   counterNum: { fontSize: 15, fontWeight: 'bold', color: '#1a1a1a', minWidth: 20, textAlign: 'center' },
+  
   summaryCard: { backgroundColor: '#F5F7FA', borderRadius: 16, padding: 16, marginTop: 8 },
   summaryTitle: { fontSize: 14, fontWeight: 'bold', color: '#1a1a1a', marginBottom: 12 },
   summaryRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
@@ -159,6 +180,7 @@ const styles = StyleSheet.create({
   summaryDivider: { height: 1, backgroundColor: '#E8ECF0', marginVertical: 10 },
   summaryTotal: { fontSize: 15, fontWeight: 'bold', color: '#1a1a1a' },
   summaryTotalValue: { fontSize: 15, fontWeight: 'bold', color: '#1565C0' },
+  
   checkoutBar: { position: 'absolute', left: 20, right: 20 },
   checkoutButton: { borderRadius: 16, overflow: 'hidden', elevation: 8, shadowColor: '#1565C0', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.35, shadowRadius: 10 },
   checkoutGradient: { flexDirection: 'row', alignItems: 'center', paddingVertical: 16, paddingHorizontal: 20 },

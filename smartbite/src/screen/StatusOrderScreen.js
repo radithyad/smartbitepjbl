@@ -13,7 +13,11 @@ const STATUS_STEPS = [
 ];
 
 export default function StatusOrderScreen({ route, navigation }) {
-  const { toko, totalHarga, catatan, metodeBayar, itemDiKeranjang, keranjang, orderId } = route.params;
+  const { toko: initialToko, totalHarga, catatan, metodeBayar, itemDiKeranjang: initialItems, keranjang, orderId } = route.params;
+  
+  const [fullToko, setFullToko] = useState(initialToko);
+  const [fullItems, setFullItems] = useState(initialItems);
+
   const [currentStatus, setCurrentStatus] = useState(1);
   const [orderData, setOrderData] = useState(null); 
   
@@ -35,7 +39,7 @@ export default function StatusOrderScreen({ route, navigation }) {
           setOrderData(myOrder);
           
           if (myOrder.status !== lastStatusRef.current) {
-            sendOrderStatusNotification(myOrder.status, toko.nama, orderId);
+            sendOrderStatusNotification(myOrder.status, fullToko.nama, orderId);
             lastStatusRef.current = myOrder.status;
           }
 
@@ -49,7 +53,37 @@ export default function StatusOrderScreen({ route, navigation }) {
       }
     };
 
+    const fetchMissingImages = async () => {
+      try {
+        const tId = fullToko._id || fullToko.id || fullToko.toko_id;
+        if (!tId) return;
+
+        const menuRes = await api.get(`/menu/toko/${tId}`);
+        if (menuRes.data) {
+          setFullItems(prev => prev.map(item => {
+            const match = menuRes.data.find(m => (m._id || m.id) === (item._id || item.id || item.menu_id));
+            return match && match.foto_url ? { ...item, foto_url: match.foto_url } : item;
+          }));
+        }
+
+        if (!fullToko.foto_url) {
+          const tokoRes = await api.get('/toko');
+          const matchToko = tokoRes.data.find(t => (t._id || t.id) === tId);
+          if (matchToko && matchToko.foto_url) {
+            setFullToko(prev => ({ ...prev, foto_url: matchToko.foto_url, estimasi: matchToko.estimasi || prev.estimasi }));
+          }
+        }
+      } catch (error) {
+        console.log("Gagal fetch gambar:", error.message);
+      }
+    };
+
     fetchStatus();
+    
+    if (!fullToko.foto_url || fullItems.some(item => !item.foto_url)) {
+      fetchMissingImages();
+    }
+
     const intervalId = setInterval(() => {
        if (lastStatusRef.current !== 'siap' && lastStatusRef.current !== 'selesai' && lastStatusRef.current !== 'ditolak') {
           fetchStatus();
@@ -70,6 +104,16 @@ export default function StatusOrderScreen({ route, navigation }) {
     if (lbl.includes('qris')) return 'qr-code-outline';
     if (lbl.includes('transfer')) return 'swap-horizontal-outline';
     return 'cash-outline';
+  };
+
+  // 🔥 Fungsi Navigasi ke Chat
+  const handleChatPenjual = () => {
+    navigation.navigate('RoomChat', { // 👈 Langsung tembak ke RoomChat
+      tokoId: fullToko._id || fullToko.id || fullToko.toko_id,
+      tokoNama: fullToko.nama,
+      orderId: orderId,
+      autoCreateRoom: true 
+    });
   };
 
   const isRejected = orderData?.status === 'ditolak';
@@ -118,7 +162,7 @@ export default function StatusOrderScreen({ route, navigation }) {
                 <Ionicons name="checkmark-circle" size={32} color="#2E7D32" />
                 <View style={{ flex: 1 }}>
                   <Text style={styles.pickupAlertTitle}>Pesanan Siap Diambil!</Text>
-                  <Text style={styles.pickupAlertDesc}>Segera ke {toko.nama} untuk pickup</Text>
+                  <Text style={styles.pickupAlertDesc}>Segera ke {fullToko.nama} untuk pickup</Text>
                 </View>
               </View>
             )}
@@ -166,7 +210,7 @@ export default function StatusOrderScreen({ route, navigation }) {
           </>
         )}
 
-        {/* 🔥 Info Toko (FOTO DIBESARKAN) */}
+        {/* Info Toko */}
         <View style={styles.card}>
           <View style={styles.cardTitleRow}>
             <Ionicons name="storefront-outline" size={18} color="#1a1a1a" />
@@ -175,24 +219,26 @@ export default function StatusOrderScreen({ route, navigation }) {
           
           <View style={styles.infoRow}>
             <View style={styles.tokoIconBox}>
-              {toko.foto_url ? (
-                <Image source={{ uri: toko.foto_url }} style={styles.tokoImage} resizeMode="cover" />
+              {fullToko.foto_url ? (
+                <Image source={{ uri: fullToko.foto_url }} style={styles.tokoImage} resizeMode="cover" />
               ) : (
-                <Ionicons name="storefront" size={40} color="#1565C0" />
+                <Text style={{ fontSize: 40 }}>{fullToko.emoji || '🏪'}</Text>
               )}
             </View>
             <View style={{ flex: 1, justifyContent: 'center' }}>
-              <Text style={styles.infoNama}>{toko.nama}</Text>
-              <Text style={styles.infoKategori}>{toko.kategori}</Text>
+              <Text style={styles.infoNama}>{fullToko.nama}</Text>
+              <Text style={styles.infoKategori}>{fullToko.kategori}</Text>
             </View>
           </View>
+          
+          <View style={styles.divider} />
           
           <View style={styles.infoDetail}>
             <View style={styles.infoDetailLeft}>
               <Ionicons name="time-outline" size={15} color="#888" />
               <Text style={styles.infoDetailLabel}>Estimasi</Text>
             </View>
-            <Text style={styles.infoDetailValue}>{toko.estimasi || toko.waktu || '10-15 mnt'}</Text>
+            <Text style={styles.infoDetailValue}>{fullToko.estimasi || fullToko.waktu || '10-15 mnt'}</Text>
           </View>
           
           <View style={styles.infoDetail}>
@@ -217,20 +263,20 @@ export default function StatusOrderScreen({ route, navigation }) {
           ) : null}
         </View>
 
-        {/* 🔥 Detail Pesanan (PENGGUNAAN FOTO MENU) */}
+        {/* Detail Pesanan */}
         <View style={styles.card}>
           <View style={styles.cardTitleRow}>
             <Ionicons name="receipt-outline" size={18} color="#1a1a1a" />
             <Text style={styles.cardTitle}>Detail Pesanan</Text>
           </View>
 
-          {itemDiKeranjang.map((menu) => (
+          {fullItems.map((menu) => (
             <View key={menu._id || menu.id} style={styles.orderRow}>
               <View style={styles.orderImageBox}>
                 {menu.foto_url ? (
                    <Image source={{ uri: menu.foto_url }} style={styles.orderImage} resizeMode="cover" />
                 ) : (
-                   <Text style={{ fontSize: 26 }}>{menu.emoji || '🍱'}</Text>
+                   <Text style={{ fontSize: 32 }}>{menu.emoji || '🍽️'}</Text>
                 )}
               </View>
               
@@ -254,10 +300,22 @@ export default function StatusOrderScreen({ route, navigation }) {
           </View>
         </View>
 
-        {isFromCheckout && (
-          <TouchableOpacity style={styles.homeButton} activeOpacity={0.8} onPress={() => navigation.navigate('Main')}>
-            <Ionicons name="home-outline" size={18} color="#1565C0" style={{ marginRight: 8 }} />
-            <Text style={styles.homeButtonText}>Kembali ke Beranda</Text>
+        {/* 🔥 AREA BUTTON DINAMIS (CHECKOUT vs AKTIVITAS) */}
+        {isFromCheckout ? (
+          <View style={styles.bottomButtonsRow}>
+            <TouchableOpacity style={[styles.bottomButton, styles.chatButtonHalf]} activeOpacity={0.8} onPress={handleChatPenjual}>
+              <Ionicons name="chatbubbles-outline" size={18} color="#fff" style={{ marginRight: 6 }} />
+              <Text style={styles.chatButtonText}>Chat Penjual</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.bottomButton, styles.homeButtonHalf]} activeOpacity={0.8} onPress={() => navigation.navigate('Main')}>
+              <Ionicons name="home-outline" size={18} color="#1565C0" style={{ marginRight: 6 }} />
+              <Text style={styles.homeButtonText}>Beranda</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <TouchableOpacity style={styles.chatButtonFull} activeOpacity={0.8} onPress={handleChatPenjual}>
+            <Ionicons name="chatbubbles-outline" size={20} color="#fff" style={{ marginRight: 8 }} />
+            <Text style={styles.chatButtonText}>Chat Penjual</Text>
           </TouchableOpacity>
         )}
 
@@ -329,35 +387,41 @@ const styles = StyleSheet.create({
   stepLabel: { fontSize: 14, fontWeight: '600' },
   stepDesc: { fontSize: 12, lineHeight: 18 },
 
-  // ── Info Toko (DIPERBESAR) ────────────────────────────
+  // ── Info Toko ─────────────────────────────────────────
   infoRow: { flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 16 },
   tokoIconBox: { width: 84, height: 84, borderRadius: 18, backgroundColor: '#F0F4FF', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' },
   tokoImage: { width: '100%', height: '100%' },
   infoNama: { fontSize: 17, fontWeight: 'bold', color: '#1a1a1a', marginBottom: 4 },
   infoKategori: { fontSize: 13, color: '#888' },
   
-  divider: { height: 1, backgroundColor: '#F0F0F0', marginVertical: 6 },
+  divider: { height: 1, backgroundColor: '#F0F0F0', marginVertical: 12 },
   
   infoDetail: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
   infoDetailLeft: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   infoDetailLabel: { fontSize: 13, color: '#888' },
   infoDetailValue: { fontSize: 13, color: '#1a1a1a', fontWeight: '500', maxWidth: '60%', textAlign: 'right' },
 
-  // ── Order Detail (PAKAI FOTO MENU) ────────────────────
+  // ── Order Detail ──────────────────────────────────────
   orderRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 14, gap: 12 },
-  orderImageBox: { width: 64, height: 64, borderRadius: 12, backgroundColor: '#F5F7FA', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' },
+  orderImageBox: { width: 48, height: 48, borderRadius: 12, backgroundColor: '#F5F7FA', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' },
   orderImage: { width: '100%', height: '100%' },
   orderTextWrapper: { flex: 1, justifyContent: 'center' },
   orderNama: { fontSize: 14, color: '#1a1a1a', fontWeight: '600', marginBottom: 2 },
-  orderHargaText: { fontSize: 12, color: '#888' }, // Harga satuan
+  orderHargaText: { fontSize: 12, color: '#888' }, 
   orderQty: { fontSize: 13, color: '#888', fontWeight: '500', marginHorizontal: 6 },
-  orderHargaTotal: { fontSize: 14, fontWeight: '700', color: '#1565C0', minWidth: 70, textAlign: 'right' }, // Harga total item
+  orderHargaTotal: { fontSize: 14, fontWeight: '700', color: '#1565C0', minWidth: 70, textAlign: 'right' }, 
   
   totalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 },
   totalLabel: { fontSize: 15, fontWeight: 'bold', color: '#1a1a1a' },
   totalValue: { fontSize: 16, fontWeight: 'bold', color: '#1565C0' },
 
-  // ── Home Button ───────────────────────────────────────
-  homeButton: { flexDirection: 'row', backgroundColor: '#fff', borderRadius: 16, paddingVertical: 16, alignItems: 'center', justifyContent: 'center', marginBottom: 12, borderWidth: 1.5, borderColor: '#1565C0' },
+  // ── Bottom Buttons (Dinamis) ──────────────────────────
+  bottomButtonsRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, marginBottom: 12 },
+  bottomButton: { flex: 1, flexDirection: 'row', borderRadius: 16, paddingVertical: 14, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5 },
+  chatButtonHalf: { backgroundColor: '#1565C0', borderColor: '#1565C0' },
+  homeButtonHalf: { backgroundColor: '#fff', borderColor: '#1565C0' },
+  chatButtonText: { color: '#fff', fontSize: 15, fontWeight: 'bold' },
   homeButtonText: { color: '#1565C0', fontSize: 15, fontWeight: 'bold' },
+  
+  chatButtonFull: { flexDirection: 'row', backgroundColor: '#1565C0', borderRadius: 16, paddingVertical: 16, alignItems: 'center', justifyContent: 'center', marginBottom: 12, borderWidth: 1.5, borderColor: '#1565C0' },
 });

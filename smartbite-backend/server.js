@@ -9,6 +9,7 @@ const tokoRoutes = require('./routes/tokoRoutes');
 const menuRoutes = require('./routes/menuRoutes');
 const orderRoutes = require('./routes/orderRoutes');
 const ulasanRoutes = require('./routes/ulasanRoutes');
+const chatRoutes = require('./routes/chatRoutes')
 
 // Middleware biar aplikasi React Native kamu diizinin ngakses server ini
 app.use(cors());
@@ -20,6 +21,7 @@ app.use('/api/toko', tokoRoutes);
 app.use('/api/menu', menuRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/ulasan', ulasanRoutes);
+app.use('/api/chat', chatRoutes);
 
 // Endpoint dasar buat ngecek server jalan atau nggak
 app.get('/', (req, res) => {

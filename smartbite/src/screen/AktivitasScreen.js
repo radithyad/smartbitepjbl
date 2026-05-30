@@ -5,7 +5,6 @@ import { useFocusEffect } from '@react-navigation/native';
 import { api } from '../service/api';
 import { customAlert } from '../utils/alerthelper';
 
-// 👇 Import Icon Libraries
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 
 const STATUS_LABEL = {
@@ -24,22 +23,43 @@ export default function AktivitasScreen({ navigation }) {
 
   useFocusEffect(
     useCallback(() => {
-      fetchOrders();
+      let isActive = true;
+
+      const fetchInitial = async () => {
+        setLoading(true);
+        try {
+          const timestamp = new Date().getTime();
+          const response = await api.get(`/orders/me?t=${timestamp}`);
+          if (isActive) {
+            const sortedData = response.data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+            setOrders(sortedData);
+          }
+        } catch (error) {
+          console.log("Gagal memuat pesanan awal:", error.message);
+        }
+        if (isActive) setLoading(false);
+      };
+
+      const fetchSilent = async () => {
+        try {
+          const timestamp = new Date().getTime();
+          const response = await api.get(`/orders/me?t=${timestamp}`);
+          if (isActive) {
+            const sortedData = response.data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+            setOrders(sortedData); 
+          }
+        } catch (error) {}
+      };
+
+      fetchInitial();
+      const intervalId = setInterval(fetchSilent, 3000);
+
+      return () => {
+        isActive = false;
+        clearInterval(intervalId);
+      };
     }, [])
   );
-
-  const fetchOrders = async () => {
-    setLoading(true);
-    try {
-      const timestamp = new Date().getTime();
-      const response = await api.get(`/orders/me?t=${timestamp}`);
-      const sortedData = response.data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-      setOrders(sortedData);
-    } catch (error) {
-      console.log("Gagal memuat pesanan:", error.message);
-    }
-    setLoading(false);
-  };
 
   const handleCancel = (orderId) => {
     customAlert('Batalkan Pesanan?', 'Pesanan yang dibatalkan tidak bisa dikembalikan. Yakin?', [
@@ -48,7 +68,10 @@ export default function AktivitasScreen({ navigation }) {
         try {
           await api.put(`/orders/${orderId}/status`, { status: 'dibatalkan' });
           customAlert('Dibatalkan', 'Pesananmu berhasil dibatalkan.'); 
-          fetchOrders(); 
+          const timestamp = new Date().getTime();
+          const response = await api.get(`/orders/me?t=${timestamp}`);
+          const sortedData = response.data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+          setOrders(sortedData);
         } catch (error) {
           customAlert('Gagal', 'Tidak bisa membatalkan pesanan.');
         }
@@ -64,7 +87,8 @@ export default function AktivitasScreen({ navigation }) {
       _id: item.menu_id || item._id || Math.random().toString(),
       nama: item.nama_menu || item.nama,
       harga: item.harga,
-      emoji: '🍱' 
+      foto_url: item.foto_url || item.menu?.foto_url || null, 
+      emoji: item.emoji || item.menu?.emoji || '🍽️'
     }));
 
     const reconstructedKeranjang = {};
@@ -86,6 +110,18 @@ export default function AktivitasScreen({ navigation }) {
       itemDiKeranjang: reconstructedItems,
       keranjang: reconstructedKeranjang,
       orderId: orderId,
+    });
+  };
+
+  // 🔥 FUNGSI BARU: Buka chat dari aktivitas
+  const handleChatPenjual = (order) => {
+    const toko = order.toko_id || order.toko || {};
+    const orderId = order._id || order.id;
+    navigation.navigate('RoomChat', { // 👈 Langsung tembak ke RoomChat
+      tokoId: toko._id || toko.id || toko.toko_id,
+      tokoNama: toko.nama,
+      orderId: orderId,
+      autoCreateRoom: true 
     });
   };
 
@@ -160,7 +196,6 @@ export default function AktivitasScreen({ navigation }) {
               <TouchableOpacity 
                 key={orderId} 
                 style={styles.orderCard}
-                // 🔥 LOGIKA BARU: Efek klik & pindah layar cuma jalan kalau tab-nya "berjalan"
                 activeOpacity={activeTab === 'berjalan' ? 0.9 : 1}
                 onPress={activeTab === 'berjalan' ? () => handlePressOrder(order) : undefined}
               >
@@ -209,22 +244,21 @@ export default function AktivitasScreen({ navigation }) {
                   <Text style={styles.totalText}>Rp {(order.total_harga || order.total).toLocaleString('id-ID')}</Text>
                 </View>
 
-                {/* Alert & Actions khusus Berjalan */}
+                {/* 🔥 Actions KHUSUS BERJALAN (Dinamis Sesuai Status) */}
                 {activeTab === 'berjalan' && (
-                  <>
-                    {order.status === 'siap' && (
-                      <View style={styles.pickupAlert}>
-                        <Ionicons name="notifications-outline" size={16} color="#2E7D32" style={{ marginRight: 6 }} />
-                        <Text style={styles.pickupAlertText}>Segera ke {toko.nama || 'toko'} untuk pickup!</Text>
-                      </View>
-                    )}
+                  <View style={styles.actionRow}>
                     {order.status === 'menunggu' && (
                       <TouchableOpacity style={styles.cancelButton} onPress={() => handleCancel(orderId)} activeOpacity={0.8}>
-                        <Ionicons name="close-circle-outline" size={16} color="#EF5350" style={{ marginRight: 6 }} />
-                        <Text style={styles.cancelText}>Batalkan Pesanan</Text>
+                        <Ionicons name="close-circle-outline" size={16} color="#EF5350" style={{ marginRight: 4 }} />
+                        <Text style={styles.cancelText}>Batalkan</Text>
                       </TouchableOpacity>
                     )}
-                  </>
+                    
+                    <TouchableOpacity style={styles.chatBtn} onPress={() => handleChatPenjual(order)} activeOpacity={0.8}>
+                      <Ionicons name="chatbubbles-outline" size={16} color="#1565C0" style={{ marginRight: 4 }} />
+                      <Text style={styles.chatBtnText}>Chat Penjual</Text>
+                    </TouchableOpacity>
+                  </View>
                 )}
 
                 {/* Actions khusus Riwayat */}
@@ -270,7 +304,7 @@ const styles = StyleSheet.create({
   rowCenter: { flexDirection: 'row', alignItems: 'center' },
   
   header: { backgroundColor: '#fff', paddingTop: 60, paddingBottom: 16, paddingHorizontal: 20 },
-  headerTitle: { fontSize: 22, fontWeight: 'bold', color: '#1a1a1a' },
+  headerTitle: { fontSize: 24, fontWeight: 'bold', color: '#1a1a1a' },
   headerSub: { fontSize: 13, color: '#888', marginTop: 2 },
   
   topTabBar: { flexDirection: 'row', backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#F0F0F0' },
@@ -314,13 +348,15 @@ const styles = StyleSheet.create({
   metodeText: { fontSize: 12, color: '#666', fontWeight: '500' },
   totalText: { fontSize: 16, fontWeight: 'bold', color: '#1565C0' },
   
-  pickupAlert: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', backgroundColor: '#E8F5E9', borderRadius: 10, padding: 10, marginTop: 14, borderWidth: 1, borderColor: '#4CAF50' },
-  pickupAlertText: { fontSize: 13, color: '#2E7D32', fontWeight: '600' },
+  // 🔥 STYLE ROW & BUTTONS BARU
+  actionRow: { flexDirection: 'row', gap: 8, marginTop: 14 },
   
-  cancelButton: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', backgroundColor: '#FFF3F3', borderRadius: 10, paddingVertical: 10, marginTop: 14, borderWidth: 1, borderColor: '#EF5350' },
+  cancelButton: { flex: 1, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', backgroundColor: '#FFF3F3', borderRadius: 10, paddingVertical: 10, borderWidth: 1, borderColor: '#EF5350' },
   cancelText: { color: '#EF5350', fontWeight: '600', fontSize: 13 },
   
-  actionRow: { flexDirection: 'row', gap: 8, marginTop: 14 },
+  chatBtn: { flex: 1, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', backgroundColor: '#E3F2FD', borderRadius: 10, paddingVertical: 10, borderWidth: 1, borderColor: '#1565C0' },
+  chatBtnText: { color: '#1565C0', fontWeight: '600', fontSize: 13 },
+  
   ulasanBtn: { flex: 1, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', backgroundColor: '#FFF8E1', borderRadius: 10, paddingVertical: 10, borderWidth: 1, borderColor: '#FFC107' },
   ulasanText: { color: '#F57F17', fontWeight: '600', fontSize: 13 },
   
