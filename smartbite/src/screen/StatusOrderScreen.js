@@ -21,7 +21,9 @@ export default function StatusOrderScreen({ route, navigation }) {
   const [currentStatus, setCurrentStatus] = useState(1);
   const [orderData, setOrderData] = useState(null); 
   
-  const lastStatusRef = useRef('menunggu');
+  // 🔥 RAHASIA ANTI SPAM NOTIF
+  const lastStatusRef = useRef(null);
+  const isFirstFetch = useRef(true); // Penanda tarikan data pertama kali
 
   const routes = navigation.getState()?.routes;
   const prevRoute = routes ? routes[routes.length - 2]?.name : '';
@@ -38,9 +40,19 @@ export default function StatusOrderScreen({ route, navigation }) {
         if (myOrder) {
           setOrderData(myOrder);
           
-          if (myOrder.status !== lastStatusRef.current) {
-            sendOrderStatusNotification(myOrder.status, fullToko.nama, orderId);
+          // 🔥 LOGIKA ANTI-SPAM PALING AMPUH
+          if (isFirstFetch.current) {
+            // Tarikan pertama pas buka layar: Cuma catet statusnya buat patokan, JANGAN kirim notif!
             lastStatusRef.current = myOrder.status;
+            isFirstFetch.current = false;
+          } else {
+            // Tarikan kedua, ketiga (polling): Kalau beda dari patokan, BARU kirim notif!
+            if (myOrder.status !== lastStatusRef.current) {
+              if (myOrder.status === 'diproses' || myOrder.status === 'siap') {
+                sendOrderStatusNotification(myOrder.status, fullToko.nama, orderId);
+              }
+              lastStatusRef.current = myOrder.status;
+            }
           }
 
           if (myOrder.status === 'menunggu') setCurrentStatus(1);
@@ -106,9 +118,8 @@ export default function StatusOrderScreen({ route, navigation }) {
     return 'cash-outline';
   };
 
-  // 🔥 Fungsi Navigasi ke Chat
   const handleChatPenjual = () => {
-    navigation.navigate('RoomChat', { // 👈 Langsung tembak ke RoomChat
+    navigation.navigate('RoomChat', { 
       tokoId: fullToko._id || fullToko.id || fullToko.toko_id,
       tokoNama: fullToko.nama,
       orderId: orderId,
@@ -287,9 +298,9 @@ export default function StatusOrderScreen({ route, navigation }) {
                 </Text>
               </View>
 
-              <Text style={styles.orderQty}>x{keranjang[menu._id || menu.id]}</Text>
+              <Text style={styles.orderQty}>x{keranjang[menu._id || menu.id] || menu.qty}</Text>
               <Text style={styles.orderHargaTotal}>
-                Rp {((menu.harga || 0) * keranjang[menu._id || menu.id]).toLocaleString('id-ID')}
+                Rp {((menu.harga || 0) * (keranjang[menu._id || menu.id] || menu.qty)).toLocaleString('id-ID')}
               </Text>
             </View>
           ))}
@@ -300,7 +311,7 @@ export default function StatusOrderScreen({ route, navigation }) {
           </View>
         </View>
 
-        {/* 🔥 AREA BUTTON DINAMIS (CHECKOUT vs AKTIVITAS) */}
+        {/* AREA BUTTON DINAMIS */}
         {isFromCheckout ? (
           <View style={styles.bottomButtonsRow}>
             <TouchableOpacity style={[styles.bottomButton, styles.chatButtonHalf]} activeOpacity={0.8} onPress={handleChatPenjual}>
@@ -328,7 +339,6 @@ export default function StatusOrderScreen({ route, navigation }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F7FA' },
 
-  // ── Header ────────────────────────────────────────────
   header: {
     backgroundColor: '#fff',
     paddingTop: 55,
@@ -359,10 +369,8 @@ const styles = StyleSheet.create({
   statusPillRed: { backgroundColor: '#FFEBEE' },
   statusPillText: { fontSize: 13, fontWeight: '700', color: '#1565C0' },
 
-  // ── Scroll ────────────────────────────────────────────
   scrollContent: { paddingHorizontal: 20, paddingTop: 16 },
 
-  // ── Alert & Status ────────────────────────────────────
   pickupAlert: { backgroundColor: '#E8F5E9', borderRadius: 16, padding: 16, flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12, borderWidth: 1.5, borderColor: '#4CAF50' },
   pickupAlertTitle: { fontSize: 14, fontWeight: 'bold', color: '#2E7D32' },
   pickupAlertDesc: { fontSize: 12, color: '#555', marginTop: 2 },
@@ -371,12 +379,10 @@ const styles = StyleSheet.create({
   rejectedTitle: { fontSize: 16, fontWeight: 'bold', color: '#C62828', marginBottom: 6 },
   rejectedDesc: { fontSize: 13, color: '#D32F2F', textAlign: 'center', lineHeight: 20, paddingHorizontal: 10 },
 
-  // ── Card Global ───────────────────────────────────────
   card: { backgroundColor: '#fff', borderRadius: 16, padding: 16, marginBottom: 12, elevation: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 4 },
   cardTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16 },
   cardTitle: { fontSize: 15, fontWeight: 'bold', color: '#1a1a1a' },
 
-  // ── Step Tracking ─────────────────────────────────────
   stepRow: { flexDirection: 'row', marginBottom: 4 },
   stepLeft: { alignItems: 'center', marginRight: 14, width: 32 },
   stepCircle: { width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
@@ -387,7 +393,6 @@ const styles = StyleSheet.create({
   stepLabel: { fontSize: 14, fontWeight: '600' },
   stepDesc: { fontSize: 12, lineHeight: 18 },
 
-  // ── Info Toko ─────────────────────────────────────────
   infoRow: { flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 16 },
   tokoIconBox: { width: 84, height: 84, borderRadius: 18, backgroundColor: '#F0F4FF', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' },
   tokoImage: { width: '100%', height: '100%' },
@@ -401,7 +406,6 @@ const styles = StyleSheet.create({
   infoDetailLabel: { fontSize: 13, color: '#888' },
   infoDetailValue: { fontSize: 13, color: '#1a1a1a', fontWeight: '500', maxWidth: '60%', textAlign: 'right' },
 
-  // ── Order Detail ──────────────────────────────────────
   orderRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 14, gap: 12 },
   orderImageBox: { width: 48, height: 48, borderRadius: 12, backgroundColor: '#F5F7FA', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' },
   orderImage: { width: '100%', height: '100%' },
@@ -415,7 +419,6 @@ const styles = StyleSheet.create({
   totalLabel: { fontSize: 15, fontWeight: 'bold', color: '#1a1a1a' },
   totalValue: { fontSize: 16, fontWeight: 'bold', color: '#1565C0' },
 
-  // ── Bottom Buttons (Dinamis) ──────────────────────────
   bottomButtonsRow: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, marginBottom: 12 },
   bottomButton: { flex: 1, flexDirection: 'row', borderRadius: 16, paddingVertical: 14, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5 },
   chatButtonHalf: { backgroundColor: '#1565C0', borderColor: '#1565C0' },

@@ -7,10 +7,8 @@ import { useFocusEffect } from '@react-navigation/native';
 import { api } from '../service/api';
 import * as SecureStore from 'expo-secure-store';
 
-// 👇 Import semua keluarga ikon yang kita butuhkan!
 import { Ionicons, FontAwesome5, FontAwesome6, MaterialCommunityIcons } from '@expo/vector-icons'; 
 
-// 👇 Kategori campuran (tiap ikon bisa diatur ukurannya biar visualnya seimbang)
 const KATEGORI = [
   { id: 'nasi', label: 'Nasi', type: 'FA6', icon: 'bowl-food', size: 24 },
   { id: 'mie', label: 'Mie', type: 'MCI', icon: 'noodles', size: 28 },
@@ -20,6 +18,24 @@ const KATEGORI = [
   { id: 'lainnya', label: 'Lainnya', type: 'FA5', icon: 'th-large', size: 24 },
 ];
 
+// 🔥 FUNGSI SAKTI CEK JAM OPERASIONAL
+const cekJamOperasional = (jamBuka, jamTutup) => {
+  if (!jamBuka || !jamTutup) return true; // Default buka kalau jam kosong
+  const now = new Date();
+  const [bukjam, bukmenit] = jamBuka.split(':').map(Number);
+  const [tutjam, tutmenit] = jamTutup.split(':').map(Number);
+  const nowMenit = now.getHours() * 60 + now.getMinutes();
+  const bukaMenit = bukjam * 60 + bukmenit;
+  const tutupMenit = tutjam * 60 + tutmenit;
+  
+  if (bukaMenit <= tutupMenit) {
+    return nowMenit >= bukaMenit && nowMenit < tutupMenit;
+  } else {
+    // Kalau toko buka lewat tengah malam (misal 18:00 - 02:00)
+    return nowMenit >= bukaMenit || nowMenit < tutupMenit;
+  }
+};
+
 export default function HomeScreen({ navigation }) {
   const [userName, setUserName] = useState('');
   const [tokoList, setTokoList] = useState([]);
@@ -28,7 +44,6 @@ export default function HomeScreen({ navigation }) {
   const [selectedKategori, setSelectedKategori] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // ── Ambil Data Nama User Dari Sesi Login ──
   useEffect(() => {
     const fetchUserData = async () => {
       try {
@@ -44,7 +59,6 @@ export default function HomeScreen({ navigation }) {
     fetchUserData();
   }, []);
 
-  // ── Ambil Data Toko & Menu Terlaris Dari Backend ──
   const fetchData = async () => {
     setLoading(true);
     try {
@@ -67,7 +81,6 @@ export default function HomeScreen({ navigation }) {
     }, [])
   );
 
-  // ── Fungsi Filter Kategori ──
   const handleSelectKategori = (kategoriId) => {
     if (selectedKategori === kategoriId) {
       setSelectedKategori(null);
@@ -94,10 +107,9 @@ export default function HomeScreen({ navigation }) {
       <View style={styles.headerSolid}>
         <View style={styles.headerTop}>
           <Text style={styles.headerGreeting}>Halo, {userName}!</Text>
-          <Text style={styles.headerSubtext}>Mau makan hemat & praktis di kantin mana hari ini?</Text>
+          <Text style={styles.headerSubtext}>Mau makan apa hari ini?</Text>
         </View>
 
-        {/* ── Search Bar Di Dalam Header ── */}
         <TouchableOpacity 
           style={styles.searchBarPintasan} 
           activeOpacity={0.9}
@@ -110,16 +122,10 @@ export default function HomeScreen({ navigation }) {
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120, paddingTop: 18 }}>
         
-        {/* ── Section Kategori Campuran (Mix Libraries) ── */}
-        <ScrollView 
-          horizontal 
-          showsHorizontalScrollIndicator={false} 
-          contentContainerStyle={styles.kategoriContainer}
-        >
+        {/* ── Section Kategori ── */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.kategoriContainer}>
           {KATEGORI.map((item) => {
             const isSelected = selectedKategori === item.id;
-            
-            // 👇 Logika Sakti: Nentuin komponen mana yang dipakai
             let IconComponent = FontAwesome5;
             if (item.type === 'FA6') IconComponent = FontAwesome6;
             if (item.type === 'MCI') IconComponent = MaterialCommunityIcons;
@@ -131,15 +137,8 @@ export default function HomeScreen({ navigation }) {
                 onPress={() => handleSelectKategori(item.id)}
                 activeOpacity={0.8}
               >
-                <IconComponent 
-                  name={item.icon} 
-                  size={item.size} 
-                  color={isSelected ? '#fff' : '#1565C0'} 
-                  style={{ marginBottom: 8 }}
-                />
-                <Text style={[styles.kategoriLabel, isSelected && styles.kategoriLabelActive]}>
-                  {item.label}
-                </Text>
+                <IconComponent name={item.icon} size={item.size} color={isSelected ? '#fff' : '#1565C0'} style={{ marginBottom: 8 }} />
+                <Text style={[styles.kategoriLabel, isSelected && styles.kategoriLabelActive]}>{item.label}</Text>
               </TouchableOpacity>
             );
           })}
@@ -159,11 +158,7 @@ export default function HomeScreen({ navigation }) {
               keyExtractor={(item) => item._id || item.id}
               contentContainerStyle={{ paddingHorizontal: 20, gap: 14 }}
               renderItem={({ item }) => (
-                <TouchableOpacity 
-                  style={styles.terlarisCard}
-                  activeOpacity={0.8}
-                  onPress={() => navigation.navigate('DetailToko', { toko: item.toko_id || item.toko })}
-                >
+                <TouchableOpacity style={styles.terlarisCard} activeOpacity={0.8} onPress={() => navigation.navigate('DetailToko', { toko: item.toko_id || item.toko })}>
                   <View style={styles.terlarisImageBox}>
                     {item.foto_url ? (
                        <Image source={{ uri: item.foto_url }} style={styles.terlarisImage} resizeMode="cover" />
@@ -195,7 +190,10 @@ export default function HomeScreen({ navigation }) {
             </View>
           ) : (
             tokoFiltered.map((toko) => {
-              const isBuka = toko.aktif !== false;
+              // 🔥 LOGIKA BUKA/TUTUP SAKTI
+              const isWaktuBuka = cekJamOperasional(toko.jam_buka, toko.jam_tutup);
+              const isBuka = (toko.aktif !== false) && isWaktuBuka;
+
               return (
                 <TouchableOpacity
                   key={toko._id || toko.id}
@@ -229,11 +227,22 @@ export default function HomeScreen({ navigation }) {
                     </View>
                     <Text style={styles.tokoKategori}>{toko.kategori}</Text>
                     
-                    {/* Meta Info (Estimasi & Jam Dihapus Murni) */}
+                    {/* 🔥 META INFO LENGKAP (Rating & Estimasi) */}
                     <View style={styles.tokoMeta}>
-                      <Ionicons name="star" size={12} color="#FFC107" />
-                      <Text style={styles.tokoMetaText}>{toko.rating || 'Baru'}</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                        <Ionicons name="star" size={13} color="#FFC107" />
+                        <Text style={styles.tokoMetaText}>{toko.rating || 'Baru'}</Text>
+                      </View>
+                      
+                      {/* Titik Pemisah */}
+                      <View style={styles.metaDivider} />
+                      
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                        <Ionicons name="time-outline" size={14} color="#888" />
+                        <Text style={styles.tokoMetaText}>{toko.estimasi || '10-15'} mnt</Text>
+                      </View>
                     </View>
+                    
                   </View>
                 </TouchableOpacity>
               );
@@ -250,55 +259,25 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F7FA' },
   centerContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F5F7FA' },
   
-  // ── Header Solid Blue & Raksasa ──
-  headerSolid: {
-    backgroundColor: '#1565C0',
-    paddingTop: Platform.OS === 'ios' ? 65 : 55, 
-    paddingHorizontal: 20,
-    paddingBottom: 28,
-    borderBottomLeftRadius: 32, 
-    borderBottomRightRadius: 32,
-  },
+  headerSolid: { backgroundColor: '#1565C0', paddingTop: Platform.OS === 'ios' ? 65 : 55, paddingHorizontal: 20, paddingBottom: 28, borderBottomLeftRadius: 32, borderBottomRightRadius: 32 },
   headerTop: { marginBottom: 18 }, 
   headerGreeting: { fontSize: 30, fontWeight: 'bold', color: '#fff', letterSpacing: -0.5 },
   headerSubtext: { fontSize: 14, color: 'rgba(255,255,255,0.9)', marginTop: 0, lineHeight: 20 }, 
   
-  // ── Search Bar Di Dalam Header ──
-  searchBarPintasan: {
-    backgroundColor: '#fff',
-    borderRadius: 50, 
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    elevation: 4,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 6,
-  },
+  searchBarPintasan: { backgroundColor: '#fff', borderRadius: 50, flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 20, elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 6 },
   searchIcon: { marginRight: 10 },
   searchTextPlaceholder: { color: '#999', fontSize: 14, fontWeight: '500' },
   
-  // ── Kategori (Campuran Libraries) ──
   kategoriContainer: { paddingHorizontal: 20, gap: 12, paddingBottom: 4 },
-  kategoriCard: { 
-    backgroundColor: '#fff', 
-    borderRadius: 18, 
-    width: 82, 
-    height: 82, 
-    justifyContent: 'center', 
-    alignItems: 'center', 
-    elevation: 2, 
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4 
-  },
+  kategoriCard: { backgroundColor: '#fff', borderRadius: 18, width: 82, height: 82, justifyContent: 'center', alignItems: 'center', elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4 },
   kategoriCardActive: { backgroundColor: '#1565C0', borderWidth: 0 },
   kategoriLabel: { fontSize: 11, fontWeight: '700', color: '#555', textAlign: 'center' },
   kategoriLabelActive: { color: '#fff' },
 
-  // ── Spasi Antar Section Dirapatkan ──
   sectionHeaderRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, marginTop: 16, marginBottom: 10, gap: 6 },
   sectionTitleWithIcon: { fontSize: 17, fontWeight: 'bold', color: '#1A1A1A' },
   sectionTitle: { fontSize: 17, fontWeight: 'bold', color: '#1A1A1A', marginHorizontal: 20, marginTop: 18, marginBottom: 10 },
   
-  // ── Menu Terlaris ──
   terlarisCard: { backgroundColor: '#fff', borderRadius: 16, padding: 12, flexDirection: 'row', alignItems: 'center', width: 230, elevation: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 4, gap: 12 },
   terlarisImageBox: { width: 60, height: 60, backgroundColor: '#F0F4FF', borderRadius: 14, justifyContent: 'center', alignItems: 'center', overflow: 'hidden' },
   terlarisImage: { width: '100%', height: '100%' },
@@ -308,7 +287,6 @@ const styles = StyleSheet.create({
   terlarisToko: { fontSize: 11, color: '#666', flex: 1 },
   terlarisHarga: { fontSize: 13, fontWeight: '800', color: '#1565C0' },
   
-  // ── Toko List ──
   tokoListContainer: { paddingHorizontal: 20, gap: 10 },
   tokoCard: { backgroundColor: '#fff', borderRadius: 16, padding: 14, flexDirection: 'row', alignItems: 'center', elevation: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 4 },
   tokoCardTutup: { opacity: 0.65 },
@@ -320,13 +298,19 @@ const styles = StyleSheet.create({
   tokoInfo: { flex: 1 },
   tokoInfoTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 },
   tokoNama: { fontSize: 15, fontWeight: 'bold', color: '#1A1A1A', flex: 1, marginRight: 8 },
-  statusBadge: { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 },
+  
+  // 🔥 STYLE BADGE BARU
+  statusBadge: { borderRadius: 10, paddingHorizontal: 10, paddingVertical: 4 },
   bukaBadge: { backgroundColor: '#E8F5E9' },
   tutupBadge: { backgroundColor: '#FFEBEE' },
-  statusBadgeText: { fontSize: 10, fontWeight: '700' },
+  statusBadgeText: { fontSize: 11, fontWeight: '700' },
+  
   tokoKategori: { fontSize: 12, color: '#777', marginBottom: 5 },
-  tokoMeta: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  tokoMetaText: { fontSize: 12, color: '#555', fontWeight: '500' },
+  
+  // 🔥 STYLE META INFO BARU (Bawah Kategori)
+  tokoMeta: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 2 },
+  tokoMetaText: { fontSize: 12, color: '#555', fontWeight: '600' },
+  metaDivider: { width: 4, height: 4, borderRadius: 2, backgroundColor: '#CCC' }, // Titik abu-abu
   
   emptyStateCard: { borderRadius: 16, padding: 30, marginHorizontal: 20, alignItems: 'center', gap: 10 },
   emptyStateText: { color: '#888', fontSize: 13, fontWeight: '500' }

@@ -1,8 +1,9 @@
-import { View, Text, StyleSheet, TextInput, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TextInput, ScrollView, TouchableOpacity, ActivityIndicator, Image } from 'react-native';
 import { useState } from 'react';
 import { api } from '../service/api'; 
+import { Ionicons } from '@expo/vector-icons';
 
-// 🔥 Import Floating Cart komponen baru kita
+// 🔥 Import Floating Cart
 import FloatingCart from '../component/FloatingCart';
 
 export default function SearchScreen({ navigation }) {
@@ -50,24 +51,25 @@ export default function SearchScreen({ navigation }) {
   return (
     <View style={styles.container}>
 
-      {/* Header */}
+      {/* Header dengan Search Bar Gaya HomeScreen */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()} activeOpacity={0.8}>
-          <Text style={styles.backIcon}>‹</Text>
+          <Ionicons name="chevron-back" size={26} color="#1a1a1a" />
         </TouchableOpacity>
-        <View style={styles.searchBar}>
-          <Text style={styles.searchIcon}>🔍</Text>
+        
+        <View style={styles.searchBarPintasan}>
+          <Ionicons name="search" size={20} color="#888" style={styles.searchIcon} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Mau makan apa hari ini..."
-            placeholderTextColor="#aaa"
+            placeholder="Cari makanan atau toko..."
+            placeholderTextColor="#999"
             value={query}
             onChangeText={handleSearch}
             autoFocus
           />
           {query.length > 0 && (
             <TouchableOpacity onPress={() => { setQuery(''); setResults({ toko: [], menu: [] }); setSearched(false); }}>
-              <Text style={{ color: '#aaa', fontSize: 16, paddingHorizontal: 4 }}>✕</Text>
+              <Ionicons name="close-circle" size={20} color="#ccc" />
             </TouchableOpacity>
           )}
         </View>
@@ -81,43 +83,62 @@ export default function SearchScreen({ navigation }) {
           </View>
         ) : searched && results.toko.length === 0 && results.menu.length === 0 ? (
           <View style={styles.centerContainer}>
-            <Text style={styles.emptyEmoji}>🤷</Text>
+            <Ionicons name="search-outline" size={60} color="#D0D5DD" style={{ marginBottom: 8 }} />
             <Text style={styles.emptyText}>Hasil untuk "{query}" tidak ditemukan</Text>
           </View>
         ) : searched ? (
           <>
             {results.toko.length > 0 && (
               <>
-                <Text style={styles.sectionTitle}>🏪 Toko ({results.toko.length})</Text>
+                <View style={styles.sectionHeaderRow}>
+                  <Ionicons name="storefront" size={18} color="#1a1a1a" />
+                  <Text style={styles.sectionTitle}>Toko ({results.toko.length})</Text>
+                </View>
+                
                 {results.toko.map((toko) => (
                   <TouchableOpacity key={toko._id || toko.id} style={styles.tokoCard} activeOpacity={0.8} onPress={() => navigation.navigate('DetailToko', { toko })}>
-                    <View style={styles.tokoEmojiBox}>
-                      <Text style={{ fontSize: 30 }}>{toko.emoji}</Text>
+                    <View style={styles.imageBox}>
+                      {toko.foto_url ? (
+                        <Image source={{ uri: toko.foto_url }} style={styles.imageStyle} resizeMode="cover" />
+                      ) : (
+                        <Ionicons name="storefront" size={26} color="#1565C0" />
+                      )}
                     </View>
                     <View style={styles.tokoInfo}>
                       <Text style={styles.tokoNama}>{toko.nama}</Text>
                       <Text style={styles.tokoKategori}>{toko.kategori}</Text>
                       <View style={styles.tokoMeta}>
-                        <Text style={styles.tokoMetaText}>⭐ {toko.rating}</Text>
+                        <Ionicons name="star" size={12} color="#FFC107" />
+                        <Text style={styles.tokoMetaText}>{toko.rating || 'Baru'}</Text>
                         <Text style={styles.tokoDot}>•</Text>
-                        <Text style={styles.tokoMetaText}>⏱ {toko.waktu}</Text>
+                        <Ionicons name="time-outline" size={12} color="#888" />
+                        <Text style={styles.tokoMetaText}>{toko.waktu || toko.estimasi || '10-15 mnt'}</Text>
                       </View>
                     </View>
-                    <Text style={styles.arrow}>›</Text>
+                    <Ionicons name="chevron-forward" size={20} color="#ccc" />
                   </TouchableOpacity>
                 ))}
               </>
             )}
+            
             {results.menu.length > 0 && (
               <>
-                <Text style={styles.sectionTitle}>🍽 Menu ({results.menu.length})</Text>
+                <View style={[styles.sectionHeaderRow, { marginTop: 12 }]}>
+                  <Ionicons name="restaurant" size={18} color="#1a1a1a" />
+                  <Text style={styles.sectionTitle}>Menu ({results.menu.length})</Text>
+                </View>
+
                 {results.menu.map((menu) => {
                   const tokoData = menu.toko_id || menu.toko || {}; 
 
                   return (
                     <TouchableOpacity key={menu._id || menu.id} style={styles.menuCard} activeOpacity={0.8} onPress={() => navigation.navigate('DetailToko', { toko: tokoData })}>
-                      <View style={styles.menuEmojiBox}>
-                        <Text style={{ fontSize: 28 }}>{menu.emoji}</Text>
+                      <View style={styles.imageBox}>
+                        {menu.foto_url ? (
+                          <Image source={{ uri: menu.foto_url }} style={styles.imageStyle} resizeMode="cover" />
+                        ) : (
+                          <Ionicons name="fast-food" size={26} color="#1565C0" />
+                        )}
                       </View>
                       <View style={styles.menuInfo}>
                         <Text style={styles.menuNama}>{menu.nama}</Text>
@@ -125,7 +146,7 @@ export default function SearchScreen({ navigation }) {
                         <Text style={styles.menuHarga}>Rp {(menu.harga || 0).toLocaleString('id-ID')}</Text>
                       </View>
                       <View style={styles.tokoTag}>
-                        <Text style={styles.tokoTagEmoji}>{tokoData.emoji || '🏪'}</Text>
+                        <Ionicons name="storefront-outline" size={16} color="#888" style={{ marginBottom: 2 }} />
                         <Text style={styles.tokoTagNama} numberOfLines={1}>{tokoData.nama || 'Toko'}</Text>
                       </View>
                     </TouchableOpacity>
@@ -136,15 +157,15 @@ export default function SearchScreen({ navigation }) {
           </>
         ) : (
           <View style={styles.centerContainer}>
-            <Text style={styles.hintEmoji}>🍜</Text>
-            <Text style={styles.hintText}>Ketik nama toko atau menu</Text>
-            <Text style={styles.hintSubText}>Contoh: "bakso", "Bu Sari", "mie"</Text>
+            <Ionicons name="fast-food-outline" size={70} color="#D0D5DD" style={{ marginBottom: 8 }} />
+            <Text style={styles.hintText}>Ayo cari menu yang lagi{'\n'}pengen kamu beli!</Text>
+            <Text style={styles.hintSubText}>Contoh: baso goreng atau mie ayam</Text>
           </View>
         )}
         <View style={{ height: 100 }} />
       </ScrollView>
 
-      {/* 🔥 FLOATING CART: Terpasang indah di paling bawah Search Screen */}
+      {/* Floating Cart di bawah */}
       <FloatingCart bottom={24} />
 
     </View>
@@ -153,37 +174,42 @@ export default function SearchScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F7FA' },
-  header: { flexDirection: 'row', alignItems: 'center', paddingTop: 55, paddingBottom: 12, paddingHorizontal: 16, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#F0F0F0', gap: 10 },
+  
+  // Header & Searchbar Baru
+  header: { flexDirection: 'row', alignItems: 'center', paddingTop: 55, paddingBottom: 16, paddingHorizontal: 16, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#F0F0F0', gap: 12 },
   backButton: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#F5F7FA', justifyContent: 'center', alignItems: 'center' },
-  backIcon: { fontSize: 26, color: '#1a1a1a', lineHeight: 30, marginTop: -2 },
-  searchBar: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#F5F7FA', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, borderWidth: 1, borderColor: '#E8ECF0' },
-  searchIcon: { fontSize: 15, marginRight: 8 },
-  searchInput: { flex: 1, fontSize: 14, color: '#1a1a1a' },
+  searchBarPintasan: { flex: 1, backgroundColor: '#fff', borderRadius: 50, flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 16, elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 6 },
+  searchIcon: { marginRight: 8 },
+  searchInput: { flex: 1, fontSize: 14, color: '#1a1a1a', fontWeight: '500' },
+  
   scrollContent: { paddingHorizontal: 20, paddingTop: 16 },
-  centerContainer: { alignItems: 'center', paddingVertical: 60, gap: 10 },
+  centerContainer: { alignItems: 'center', paddingVertical: 80, gap: 8 },
   loadingText: { fontSize: 14, color: '#888' },
-  emptyEmoji: { fontSize: 50 },
   emptyText: { fontSize: 14, color: '#888', textAlign: 'center' },
-  hintEmoji: { fontSize: 60, marginBottom: 8 },
-  hintText: { fontSize: 15, fontWeight: '600', color: '#1a1a1a' },
-  hintSubText: { fontSize: 13, color: '#888' },
-  sectionTitle: { fontSize: 15, fontWeight: 'bold', color: '#1a1a1a', marginBottom: 10, marginTop: 8 },
-  tokoCard: { backgroundColor: '#fff', borderRadius: 14, padding: 14, flexDirection: 'row', alignItems: 'center', marginBottom: 10, elevation: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 4 },
-  tokoEmojiBox: { width: 52, height: 52, backgroundColor: '#F0F4FF', borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
+  hintText: { fontSize: 16, fontWeight: 'bold', color: '#1a1a1a', alignItems: 'center', textAlign: 'center' },
+  hintSubText: { fontSize: 13, color: '#888', textAlign: 'center' },
+  
+  sectionHeaderRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10, marginTop: 8, gap: 6 },
+  sectionTitle: { fontSize: 16, fontWeight: 'bold', color: '#1a1a1a' },
+  
+  // Komponen Foto Universal (buat Toko & Menu)
+  imageBox: { width: 56, height: 56, backgroundColor: '#F0F4FF', borderRadius: 14, justifyContent: 'center', alignItems: 'center', marginRight: 12, overflow: 'hidden' },
+  imageStyle: { width: '100%', height: '100%' },
+
+  tokoCard: { backgroundColor: '#fff', borderRadius: 16, padding: 14, flexDirection: 'row', alignItems: 'center', marginBottom: 12, elevation: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 4 },
   tokoInfo: { flex: 1 },
-  tokoNama: { fontSize: 14, fontWeight: 'bold', color: '#1a1a1a', marginBottom: 2 },
-  tokoKategori: { fontSize: 12, color: '#888', marginBottom: 4 },
-  tokoMeta: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  tokoMetaText: { fontSize: 12, color: '#555' },
-  tokoDot: { color: '#ccc' },
-  arrow: { fontSize: 24, color: '#ccc' },
-  menuCard: { backgroundColor: '#fff', borderRadius: 14, padding: 14, flexDirection: 'row', alignItems: 'center', marginBottom: 10, elevation: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 4, gap: 12 },
-  menuEmojiBox: { width: 52, height: 52, backgroundColor: '#F0F4FF', borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
+  tokoNama: { fontSize: 15, fontWeight: 'bold', color: '#1a1a1a', marginBottom: 2 },
+  tokoKategori: { fontSize: 12, color: '#888', marginBottom: 6 },
+  tokoMeta: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  tokoMetaText: { fontSize: 12, color: '#555', fontWeight: '600' },
+  tokoDot: { color: '#ccc', marginHorizontal: 4 },
+  
+  menuCard: { backgroundColor: '#fff', borderRadius: 16, padding: 14, flexDirection: 'row', alignItems: 'center', marginBottom: 12, elevation: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 4, gap: 12 },
   menuInfo: { flex: 1 },
-  menuNama: { fontSize: 14, fontWeight: 'bold', color: '#1a1a1a', marginBottom: 2 },
-  menuDeskripsi: { fontSize: 11, color: '#888', marginBottom: 4 },
-  menuHarga: { fontSize: 13, fontWeight: '700', color: '#1565C0' },
-  tokoTag: { alignItems: 'center', gap: 2 },
-  tokoTagEmoji: { fontSize: 18 },
-  tokoTagNama: { fontSize: 10, color: '#888', textAlign: 'center', maxWidth: 55 },
+  menuNama: { fontSize: 15, fontWeight: 'bold', color: '#1a1a1a', marginBottom: 2 },
+  menuDeskripsi: { fontSize: 12, color: '#888', marginBottom: 6 },
+  menuHarga: { fontSize: 14, fontWeight: '800', color: '#1565C0' },
+  
+  tokoTag: { alignItems: 'center', justifyContent: 'center', backgroundColor: '#F5F7FA', padding: 8, borderRadius: 10, width: 64 },
+  tokoTagNama: { fontSize: 10, color: '#666', textAlign: 'center', fontWeight: '600' },
 });

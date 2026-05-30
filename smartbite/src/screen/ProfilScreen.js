@@ -1,32 +1,83 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator, Switch, Platform, Modal } from 'react-native';
-import { useState, useEffect } from 'react';
+import { 
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, 
+  ActivityIndicator, Image, Platform, Modal, Alert, ActionSheetIOS 
+} from 'react-native';
+import { useState, useEffect, useRef } from 'react';
+import * as ImagePicker from 'expo-image-picker';
 import * as SecureStore from 'expo-secure-store';
 import { api } from '../service/api';
-import { customAlert } from '../utils/alerthelper'; 
+import { customAlert } from '../utils/alerthelper';
+import { Ionicons } from '@expo/vector-icons';
 
-const TRANSLATIONS = {
-  id: {
-    header: 'Profil Saya', aktivitas: 'AKTIVITAS', support: 'LAINNYA', dangerZone: 'ZONA BAHAYA',
-    currentOrder: 'Pesanan Saat Ini', history: 'Riwayat Pesanan',
-    lang: 'Bahasa', darkMode: 'Mode Gelap', deleteAcc: 'Hapus Akun Permanent',
-    logout: 'Keluar Akun', selectLang: 'Pilih Bahasa / Select Language', close: 'Tutup'
-  },
-  en: {
-    header: 'My Profile', aktivitas: 'ACTIVITY', support: 'SUPPORT', dangerZone: 'DANGER ZONE',
-    currentOrder: 'Current Orders', history: 'Order History',
-    lang: 'Language', darkMode: 'Dark Mode', deleteAcc: 'Delete Account Permanently',
-    logout: 'Log Out', selectLang: 'Select Language / Pilih Bahasa', close: 'Close'
-  }
+// KOMPONEN INPUT GAYA BARU (Super Clean)
+const ProfileInput = ({ 
+  iconName, placeholder, value, onChangeText, secureTextEntry, 
+  keyboardType, autoCapitalize, showEyeToggle 
+}) => {
+  const [isFocused, setIsFocused] = useState(false);
+  const [passwordShown, setPasswordShown] = useState(!secureTextEntry);
+
+  const iconColor = isFocused ? '#1565C0' : '#888';
+  const borderBottomColor = isFocused ? '#1565C0' : '#E8ECF0';
+
+  return (
+    <View style={styles.inputRow}>
+      <View style={styles.iconContainer}>
+        <Ionicons name={iconName} size={22} color={iconColor} />
+      </View>
+      <View style={[styles.textInputWrapper, { borderBottomColor }]}>
+        <TextInput
+          style={styles.textInputStyle}
+          placeholder={placeholder}
+          placeholderTextColor="#aaa"
+          value={value}
+          onChangeText={onChangeText}
+          secureTextEntry={showEyeToggle ? !passwordShown : secureTextEntry}
+          keyboardType={keyboardType}
+          autoCapitalize={autoCapitalize}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
+          
+          // Anti-Autofill biar OS ga jahil
+          autoComplete="off"
+          textContentType="none"
+          autoCorrect={false}
+          importantForAutofill="no"
+        />
+        {showEyeToggle && (
+           <TouchableOpacity onPress={() => setPasswordShown(!passwordShown)} style={styles.eyeIconBtn}>
+             <Ionicons name={passwordShown ? "eye-outline" : "eye-off-outline"} size={20} color="#aaa" />
+           </TouchableOpacity>
+        )}
+      </View>
+    </View>
+  );
 };
 
 export default function ProfilScreen({ navigation, onLogout }) {
-  const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [isDarkMode, setIsDarkMode] = useState(false);
-  const [language, setLanguage] = useState('id'); // 'id' atau 'en'
-  const [showLanguageModal, setShowLanguageModal] = useState(false); // State Modal Pop-up Bahasa
+  
+  // Data State
+  const [nama, setNama] = useState('');
+  const [email, setEmail] = useState('');
+  const [noHp, setNoHp] = useState('');
+  const [fotoUrl, setFotoUrl] = useState(null);
+  const [newPhotoBase64, setNewPhotoBase64] = useState(null);
+  const [isPhotoDeleted, setIsPhotoDeleted] = useState(false);
 
-  const t = TRANSLATIONS[language];
+  // Password State
+  const [passwordLama, setPasswordLama] = useState('');
+  const [passwordBaru, setPasswordBaru] = useState('');
+
+  // UI State
+  const [saving, setSaving] = useState(false);
+  const [isModified, setIsModified] = useState(false);
+  
+  // Modal State
+  const [fullImageModalVisible, setFullImageModalVisible] = useState(false);
+  const [phoneFocused, setPhoneFocused] = useState(false);
+
+  const initialData = useRef({ nama: '', email: '', noHp: '', fotoUrl: null });
 
   useEffect(() => {
     fetchProfileLocal();
@@ -35,27 +86,160 @@ export default function ProfilScreen({ navigation, onLogout }) {
   }, [navigation]);
 
   const fetchProfileLocal = async () => {
-    setLoading(true);
     try {
       let userData = Platform.OS === 'web' ? localStorage.getItem('userData') : await SecureStore.getItemAsync('userData');
-      if (userData) setProfile(JSON.parse(userData));
-    } catch (error) {
-      console.log('Error ambil profil:', error);
-    }
+      if (userData) {
+        const profile = JSON.parse(userData);
+        const hp = profile?.no_hp ? profile.no_hp.replace('+62', '') : (profile?.no_hp || '');
+        
+        setNama(profile.nama || '');
+        setEmail(profile.email || '');
+        setNoHp(hp);
+        setFotoUrl(profile.foto_url || null);
+        
+        initialData.current = {
+          nama: profile.nama || '',
+          email: profile.email || '',
+          noHp: hp,
+          fotoUrl: profile.foto_url || null,
+        };
+      }
+    } catch (error) {}
     setLoading(false);
   };
 
-  const handleLogout = () => {
-    customAlert(t.logout, language === 'id' ? 'Yakin ingin keluar dari aplikasi?' : 'Are you sure you want to log out?', [
+  useEffect(() => {
+    const isDataChanged = (
+      nama !== initialData.current.nama ||
+      email !== initialData.current.email ||
+      noHp !== initialData.current.noHp ||
+      fotoUrl !== initialData.current.fotoUrl ||
+      passwordBaru.length > 0 // Cuma nyala kalau beneran ngetik password baru
+    );
+    setIsModified(isDataChanged);
+  }, [nama, email, noHp, fotoUrl, passwordBaru]);
+
+  // 🔥 FIX 1: Logika Buka ActionSheet yang aman di iOS (Tutup Modal Dulu)
+  const handleUbahFotoClick = () => {
+    // 1. Tutup modal hitamnya dulu
+    setFullImageModalVisible(false);
+
+    // 2. Tunggu 0.6 detik biar modal beneran hilang, baru panggil menunya
+    setTimeout(() => {
+      if (Platform.OS === 'ios') {
+        ActionSheetIOS.showActionSheetWithOptions(
+          {
+            title: 'Ubah Foto Profil',
+            options: fotoUrl ? ['Buka Kamera', 'Dari Galeri', 'Hapus Foto', 'Batal'] : ['Buka Kamera', 'Dari Galeri', 'Batal'],
+            cancelButtonIndex: fotoUrl ? 3 : 2,
+            destructiveButtonIndex: fotoUrl ? 2 : undefined,
+          },
+          (buttonIndex) => {
+            if (buttonIndex === 0) launchImage(true);
+            else if (buttonIndex === 1) launchImage(false);
+            else if (buttonIndex === 2 && fotoUrl) handleHapusFoto();
+          }
+        );
+      } else {
+        const options = [
+          { text: 'Buka Kamera', onPress: () => launchImage(true) },
+          { text: 'Dari Galeri', onPress: () => launchImage(false) }
+        ];
+        if (fotoUrl) {
+          options.push({ text: 'Hapus Foto', onPress: handleHapusFoto });
+        }
+        Alert.alert("Ubah Foto Profil", "Pilih sumber foto", options, { cancelable: true });
+      }
+    }, 600); 
+  };
+
+  const launchImage = async (useCamera) => {
+    const permissionResult = useCamera 
+      ? await ImagePicker.requestCameraPermissionsAsync()
+      : await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (!permissionResult.granted) { 
+      Alert.alert('Izin Diperlukan', 'Akses dibutuhkan untuk mengambil foto.'); 
+      return; 
+    }
+    
+    const result = useCamera
+      ? await ImagePicker.launchCameraAsync({ allowsEditing: true, aspect: [1, 1], quality: 0.5, base64: true })
+      : await ImagePicker.launchImageLibraryAsync({ allowsEditing: true, aspect: [1, 1], quality: 0.5, base64: true });
+    
+    if (!result.canceled) {
+      setFotoUrl(result.assets[0].uri);
+      setNewPhotoBase64(`data:image/jpeg;base64,${result.assets[0].base64}`);
+      setIsPhotoDeleted(false);
+    }
+  };
+
+  const handleHapusFoto = () => {
+    setFotoUrl(null);
+    setNewPhotoBase64(null);
+    setIsPhotoDeleted(true);
+  };
+
+  // 🔥 FIX 2: Logika Simpan Pintar (Gak maksa ngecek password kalau gak diganti)
+  const handleSimpan = async () => {
+    if (!nama.trim() || !email.trim()) { customAlert('Oops!', 'Nama dan email wajib diisi.'); return; }
+
+    // CUMA validasi password KALAU ADA TEKS di kolom Password Baru
+    if (passwordBaru.trim().length > 0) {
+      if (!passwordLama) { customAlert('Oops!', 'Masukkan password lama untuk verifikasi perubahan password.'); return; }
+      if (passwordBaru.length < 6) { customAlert('Oops!', 'Password baru minimal 6 karakter.'); return; }
+    }
+
+    setSaving(true);
+    try {
+      let payload = {
+        nama: nama.trim(),
+        email: email.trim(),
+        no_hp: noHp.trim()
+      };
+
+      // CUMA kirim data password ke API kalau user beneran ngetik password baru
+      if (passwordBaru.trim().length > 0) {
+        payload.password_lama = passwordLama;
+        payload.password_baru = passwordBaru;
+      }
+
+      if (newPhotoBase64) payload.foto_base64 = newPhotoBase64;
+      if (isPhotoDeleted) payload.foto_base64 = ""; 
+
+      const response = await api.put('/auth/update-profile', payload);
+
+      if (Platform.OS === 'web') localStorage.setItem('userData', JSON.stringify(response.data.user));
+      else await SecureStore.setItemAsync('userData', JSON.stringify(response.data.user));
+
+      initialData.current = {
+        nama: nama.trim(), email: email.trim(),
+        noHp: noHp.trim(), fotoUrl: response.data.user.foto_url,
+      };
+      setIsModified(false); 
+      setNewPhotoBase64(null);
+      setPasswordLama('');
+      setPasswordBaru('');
+
+      customAlert('Berhasil! 🎉', 'Profil kamu berhasil diperbarui!');
+    } catch (err) {
+      customAlert('Gagal', err.response?.data?.message || 'Terjadi kesalahan di server backend.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleLogoutAction = () => {
+    Alert.alert('Keluar Akun', 'Yakin ingin keluar dari aplikasi?', [
       { text: 'Batal', style: 'cancel' },
       { text: 'Keluar', style: 'destructive', onPress: () => onLogout && onLogout() }
     ]);
   };
 
-  const handleDeleteAccount = () => {
-    customAlert(t.deleteAcc, language === 'id' ? 'Akun akan dihapus permanen dari database!' : 'Account will be deleted permanently!', [
+  const handleDeleteAccountAction = () => {
+    Alert.alert('Hapus Akun', 'Perhatian! Akun kamu akan dihapus permanen dan tidak dapat dikembalikan.', [
       { text: 'Batal', style: 'cancel' },
-      { text: 'Hapus', style: 'destructive', onPress: async () => {
+      { text: 'Hapus Permanen', style: 'destructive', onPress: async () => {
         try {
           await api.delete('/auth/me');
           onLogout();
@@ -64,146 +248,118 @@ export default function ProfilScreen({ navigation, onLogout }) {
     ]);
   };
 
-  const dynamicStyles = {
-    container: { backgroundColor: isDarkMode ? '#121212' : '#F5F7FA' },
-    card: { backgroundColor: isDarkMode ? '#1E1E1E' : '#FFFFFF' },
-    textMain: { color: isDarkMode ? '#FFFFFF' : '#1A1A1A' },
-    textSub: { color: isDarkMode ? '#AAAAAA' : '#888888' },
-    border: { borderColor: isDarkMode ? '#333' : '#F0F0F0' }
-  };
+  if (loading) return <View style={styles.center}><ActivityIndicator size="large" color="#1565C0" /></View>;
 
-  if (loading && !profile) {
-    return (
-      <View style={[styles.center, dynamicStyles.container]}>
-        <ActivityIndicator size="large" color="#1565C0" />
-      </View>
-    );
-  }
+  const phoneIconColor = phoneFocused ? '#1565C0' : '#888';
+  const phoneBorderColor = phoneFocused ? '#1565C0' : '#E8ECF0';
 
   return (
-    <View style={[styles.container, dynamicStyles.container]}>
-      {/* Header */}
-      <View style={[styles.headerNav, dynamicStyles.border]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Text style={[styles.backIcon, dynamicStyles.textMain]}>←</Text>
+    <View style={styles.container}>
+      
+      {/* HEADER */}
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Profil Sosial</Text>
+        <TouchableOpacity 
+          onPress={handleSimpan} 
+          disabled={!isModified || saving} 
+          activeOpacity={0.7} 
+          style={[styles.headerSaveBtn, !isModified && styles.headerSaveBtnDisabled]}
+        >
+          {saving ? (
+            <ActivityIndicator size="small" color={isModified ? "#1565C0" : "#A0A0A0"} />
+          ) : (
+            <Text style={[styles.headerSaveText, !isModified && styles.headerSaveTextDisabled]}>Simpan</Text>
+          )}
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, dynamicStyles.textMain]}>{t.header}</Text>
-        <View style={{ width: 40 }} />
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         
-        {/* Profile Section */}
-        <View style={styles.profileSection}>
-          <View style={styles.avatarWrapper}>
-            {profile?.foto_url ? (
-              <Image source={{ uri: profile.foto_url }} style={styles.avatar} />
+        {/* FOTO PROFIL */}
+        <View style={styles.centeredProfileSection}>
+          <TouchableOpacity onPress={() => setFullImageModalVisible(true)} activeOpacity={0.9}>
+            {fotoUrl ? (
+              <Image source={{ uri: fotoUrl }} style={styles.avatar} />
             ) : (
               <View style={styles.avatarPlaceholder}>
-                <Text style={styles.avatarText}>{profile?.nama?.charAt(0).toUpperCase()}</Text>
+                <Ionicons name="person" size={50} color="#A0A0A0" />
               </View>
             )}
-            {/* Tombol Edit Melekat pada Foto Profil */}
-            <TouchableOpacity 
-                style={styles.editIconBtn} 
-                onPress={() => navigation.navigate('EditProfil', { profile })}
-                activeOpacity={0.8}
-            >
-              <Text style={styles.editIcon}>✎</Text>
-            </TouchableOpacity>
-          </View>
-          <Text style={[styles.userName, dynamicStyles.textMain]}>{profile?.nama || 'User'}</Text>
-          <Text style={[styles.userEmail, dynamicStyles.textSub]}>{profile?.email || profile?.username}</Text>
+          </TouchableOpacity>
         </View>
 
-        {/* Menu Groups */}
-        <View style={styles.menuWrapper}>
+        {/* SECTION 1: INFORMASI DASAR */}
+        <Text style={styles.formSectionHeading}>Informasi Dasar</Text>
+        <View style={styles.formSectionFields}>
+          <ProfileInput iconName="person-outline" placeholder="Nama Lengkap" value={nama} onChangeText={setNama} />
+          <ProfileInput iconName="mail-outline" placeholder="Email" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
           
-          {/* SUB-MENU 1: AKTIVITAS */}
-          <Text style={[styles.groupLabel, dynamicStyles.textSub]}>{t.aktivitas}</Text>
-          <View style={[styles.menuCard, dynamicStyles.card]}>
-            <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('Main', { screen: 'Aktivitas' })} activeOpacity={0.7}>
-              <Text style={styles.menuIcon}>⚡</Text>
-              <Text style={[styles.menuLabel, dynamicStyles.textMain]}>{t.currentOrder}</Text>
-              <Text style={styles.chevron}>›</Text>
-            </TouchableOpacity>
-            <View style={[styles.divider, dynamicStyles.border]} />
-            
-            <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('Riwayat')} activeOpacity={0.7}>
-              <Text style={styles.menuIcon}>🕐</Text>
-              <Text style={[styles.menuLabel, dynamicStyles.textMain]}>{t.history}</Text>
-              <Text style={styles.chevron}>›</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* SUB-MENU 2: LAINNYA */}
-          <Text style={[styles.groupLabel, dynamicStyles.textSub]}>{t.support}</Text>
-          <View style={[styles.menuCard, dynamicStyles.card]}>
-            {/* Klik Bahasa membuka Modal popup pilihan */}
-            <TouchableOpacity style={styles.menuItem} onPress={() => setShowLanguageModal(true)} activeOpacity={0.7}>
-              <Text style={styles.menuIcon}>🌐</Text>
-              <Text style={[styles.menuLabel, dynamicStyles.textMain]}>{t.lang}</Text>
-              <Text style={styles.langValue}>{language === 'id' ? '🇮🇩 Indonesia' : '🇺🇸 English'}</Text>
-              <Text style={styles.chevron}>›</Text>
-            </TouchableOpacity>
-            <View style={[styles.divider, dynamicStyles.border]} />
-
-            <View style={styles.menuItem}>
-              <Text style={styles.menuIcon}>🌙</Text>
-              <Text style={[styles.menuLabel, dynamicStyles.textMain]}>{t.darkMode}</Text>
-              <Switch 
-                value={isDarkMode} 
-                onValueChange={setIsDarkMode}
-                trackColor={{ false: '#DDD', true: '#BBDEFB' }}
-                thumbColor={isDarkMode ? '#1565C0' : '#f4f3f4'}
-              />
+          <View style={styles.inputRow}>
+            <View style={styles.iconContainer}>
+              <Ionicons name="call-outline" size={22} color={phoneIconColor} />
+            </View>
+            <View style={styles.phoneRowWrapper}>
+               <View style={styles.phoneInputInner}>
+                 <TextInput 
+                    style={[styles.phoneInputStyle, { borderBottomColor: phoneBorderColor }]} 
+                    keyboardType="phone-pad" 
+                    value={noHp} 
+                    onChangeText={(t) => setNoHp(t.replace(/[^0-9]/g, ''))} 
+                    placeholder="08123..." 
+                    placeholderTextColor="#aaa" 
+                    onFocus={() => setPhoneFocused(true)}
+                    onBlur={() => setPhoneFocused(false)}
+                 />
+               </View>
             </View>
           </View>
-
-          {/* SUB-MENU 3: ZONA BAHAYA */}
-          <Text style={[styles.groupLabel, dynamicStyles.textSub]}>{t.dangerZone}</Text>
-          <View style={[styles.menuCard, dynamicStyles.card]}>
-            <TouchableOpacity style={styles.menuItem} onPress={handleDeleteAccount} activeOpacity={0.7}>
-              <Text style={styles.menuIcon}>🗑️</Text>
-              <Text style={[styles.menuLabel, { color: '#D32F2F' }]}>{t.deleteAcc}</Text>
-              <Text style={styles.chevron}>›</Text>
-            </TouchableOpacity>
-            <View style={[styles.divider, dynamicStyles.border]} />
-            
-            <TouchableOpacity style={styles.menuItem} onPress={handleLogout} activeOpacity={0.7}>
-              <Text style={styles.menuIcon}>🚪</Text>
-              <Text style={[styles.menuLabel, { color: '#D32F2F' }]}>{t.logout}</Text>
-              <Text style={styles.chevron}>›</Text>
-            </TouchableOpacity>
-          </View>
-
         </View>
+
+        {/* SECTION 2: GANTI PASSWORD */}
+        <Text style={[styles.formSectionHeading, { marginTop: 16 }]}>Ganti Password</Text>
+        <View style={styles.formSectionFields}>
+          <ProfileInput iconName="lock-closed-outline" placeholder="Password Lama" value={passwordLama} onChangeText={setPasswordLama} secureTextEntry={true} showEyeToggle={true} />
+          <ProfileInput iconName="key-outline" placeholder="Password Baru" value={passwordBaru} onChangeText={setPasswordBaru} secureTextEntry={true} showEyeToggle={true} />
+        </View>
+
+        {/* SECTION 3: ZONA BAHAYA */}
+        <Text style={[styles.formSectionHeading, { marginTop: 16, color: '#C62828' }]}>Zona Bahaya</Text>
+        <View style={styles.dangerZoneContainer}>
+          <TouchableOpacity style={styles.dangerItem} onPress={handleDeleteAccountAction} activeOpacity={0.7}>
+            <Ionicons name="trash-outline" size={20} color="#D32F2F" style={{ marginRight: 16 }} />
+            <Text style={styles.dangerText}>Hapus Akun Permanen</Text>
+          </TouchableOpacity>
+          <View style={styles.dangerDivider} />
+          <TouchableOpacity style={styles.dangerItem} onPress={handleLogoutAction} activeOpacity={0.7}>
+            <Ionicons name="log-out-outline" size={20} color="#D32F2F" style={{ marginRight: 16 }} />
+            <Text style={styles.dangerText}>Keluar Akun</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={{ height: 120 }} /> 
       </ScrollView>
 
-      {/* POPUP MODAL PILIHAN BAHASA */}
-      <Modal visible={showLanguageModal} transparent animationType="fade" onRequestClose={() => setShowLanguageModal(false)}>
-        <View style={styles.modalOverlay}>
-          <View style={[styles.langModalCard, dynamicStyles.card]}>
-            <Text style={[styles.langModalTitle, dynamicStyles.textMain]}>{t.selectLang}</Text>
+      {/* MODAL FOTO DETAIL */}
+      <Modal visible={fullImageModalVisible} transparent={true} animationType="fade" onRequestClose={() => setFullImageModalVisible(false)}>
+        <View style={styles.modalBackground}>
+          <TouchableOpacity style={styles.modalCloseArea} onPress={() => setFullImageModalVisible(false)} activeOpacity={1} />
+          
+          <View style={styles.modalContent}>
+            {fotoUrl ? (
+              <Image source={{ uri: fotoUrl }} style={styles.fullImageAvatar} resizeMode="cover" />
+            ) : (
+              <View style={styles.fullImageAvatarPlaceholder}>
+                 <Ionicons name="person" size={120} color="#A0A0A0" />
+              </View>
+            )}
             
-            {/* Opsi Bahasa Indonesia */}
-            <TouchableOpacity style={styles.langOptionRow} onPress={() => { setLanguage('id'); setShowLanguageModal(false); }} activeOpacity={0.7}>
-              <Text style={styles.langOptionText}>🇮🇩 Indonesia</Text>
-              {language === 'id' && <Text style={styles.checkIcon}>✓</Text>}
-            </TouchableOpacity>
-            
-            <View style={[styles.divider, dynamicStyles.border]} />
-            
-            {/* Opsi English */}
-            <TouchableOpacity style={styles.langOptionRow} onPress={() => { setLanguage('en'); setShowLanguageModal(false); }} activeOpacity={0.7}>
-              <Text style={styles.langOptionText}>🇺🇸 English</Text>
-              {language === 'en' && <Text style={styles.checkIcon}>✓</Text>}
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.closeModalBtn} onPress={() => setShowLanguageModal(false)} activeOpacity={0.8}>
-              <Text style={styles.closeModalBtnText}>{t.close}</Text>
+            {/* Tombol Ubah Foto yang MANGGIL ACTIONSHEET */}
+            <TouchableOpacity onPress={handleUbahFotoClick} activeOpacity={0.7} style={{ padding: 10 }}>
+              <Text style={styles.modalUbahFotoText}>Ubah Foto Profil</Text>
             </TouchableOpacity>
           </View>
+          
+          <TouchableOpacity style={styles.modalCloseArea} onPress={() => setFullImageModalVisible(false)} activeOpacity={1} />
         </View>
       </Modal>
 
@@ -212,43 +368,49 @@ export default function ProfilScreen({ navigation, onLogout }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  container: { flex: 1, backgroundColor: '#FFFFFF' }, 
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  headerNav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 50, paddingBottom: 15, paddingHorizontal: 20 },
-  backBtn: { width: 40, height: 40, justifyContent: 'center' },
-  backIcon: { fontSize: 24 },
-  headerTitle: { fontSize: 18, fontWeight: 'bold' },
   
-  profileSection: { alignItems: 'center', marginTop: 10, marginBottom: 30 },
-  avatarWrapper: { position: 'relative' },
+  header: { 
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', 
+    paddingTop: 60, paddingBottom: 16, paddingHorizontal: 24, 
+    backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#F0F0F0' 
+  },
+  headerTitle: { fontSize: 22, fontWeight: 'bold', color: '#1a1a1a' },
+  headerSaveBtn: { paddingVertical: 6, paddingHorizontal: 18, backgroundColor: '#F0F4FF', borderRadius: 20 },
+  headerSaveBtnDisabled: { backgroundColor: '#F5F5F5' },
+  headerSaveText: { fontSize: 14, fontWeight: '700', color: '#1565C0' },
+  headerSaveTextDisabled: { color: '#A0A0A0' },
   
-  // 👉 PENAMBAHAN OUTLINE DI FOTO PROFIL
-  avatar: { width: 95, height: 95, borderRadius: 47.5, borderWidth: 3, borderColor: '#1565C0' },
-  avatarPlaceholder: { width: 95, height: 95, borderRadius: 47.5, backgroundColor: '#E3F2FD', justifyContent: 'center', alignItems: 'center', borderWidth: 3, borderColor: '#1565C0' },
+  scrollContent: { paddingTop: 20 }, 
   
-  avatarText: { fontSize: 36, color: '#1565C0', fontWeight: 'bold' },
-  editIconBtn: { position: 'absolute', right: -2, bottom: 2, backgroundColor: '#FFF', width: 30, height: 30, borderRadius: 15, justifyContent: 'center', alignItems: 'center', elevation: 4, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 3, borderWidth: 1, borderColor: '#E8ECF0' },
-  editIcon: { fontSize: 15, color: '#444', fontWeight: 'bold' },
-  userName: { fontSize: 18, fontWeight: 'bold', marginTop: 14 },
-  userEmail: { fontSize: 13, marginTop: 4 },
+  centeredProfileSection: { alignItems: 'center', marginBottom: 32, marginTop: 10 },
+  avatar: { width: 100, height: 100, borderRadius: 50, borderWidth: 1, borderColor: '#E8ECF0' }, 
+  avatarPlaceholder: { width: 100, height: 100, borderRadius: 50, backgroundColor: '#F5F7FA', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#E8ECF0' },
+  
+  formSectionHeading: { fontSize: 13, fontWeight: '700', color: '#888', textTransform: 'uppercase', letterSpacing: 1, marginLeft: 24, marginBottom: 12 },
+  formSectionFields: { paddingHorizontal: 24, marginBottom: 8 }, 
+  
+  inputRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
+  iconContainer: { width: 44, justifyContent: 'center', alignItems: 'flex-start', marginTop: 4 }, 
+  
+  textInputWrapper: { flex: 1, flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, paddingVertical: 14 },
+  textInputStyle: { flex: 1, fontSize: 16, color: '#1a1a1a', padding: 0, margin: 0 },
+  eyeIconBtn: { padding: 4, marginLeft: 8 }, 
 
-  menuWrapper: { paddingHorizontal: 20 },
-  groupLabel: { fontSize: 12, fontWeight: 'bold', marginBottom: 8, marginLeft: 16, letterSpacing: 1 },
-  menuCard: { borderRadius: 18, paddingHorizontal: 16, marginBottom: 20, elevation: 2, shadowColor: '#000', shadowOpacity: 0.03, shadowRadius: 8 },
-  menuItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 16 }, 
-  menuIcon: { fontSize: 18, marginRight: 14, width: 24, textAlign: 'center' },
-  menuLabel: { flex: 1, fontSize: 14, fontWeight: '500' },
-  chevron: { fontSize: 20, color: '#CCC', fontWeight: '300' },
-  langValue: { fontSize: 13, fontWeight: 'bold', color: '#1565C0', marginRight: 4 },
-  divider: { height: 1, width: '100%' },
+  phoneRowWrapper: { flex: 1, flexDirection: 'row', alignItems: 'center', paddingVertical: 10 },
+  phoneInputInner: { flex: 1 },
+  phoneInputStyle: { flex: 1, fontSize: 16, color: '#1a1a1a', padding: 0, margin: 0, borderBottomWidth: 1, paddingBottom: 14 },
 
-  // 👉 STYLING MODAL POPUP BAHASA
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 30 },
-  langModalCard: { width: '100%', borderRadius: 20, padding: 20, elevation: 10, shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 10 },
-  langModalTitle: { fontSize: 16, fontWeight: 'bold', marginBottom: 16, textAlign: 'center' },
-  langOptionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 4 },
-  langOptionText: { fontSize: 14, fontWeight: '500' },
-  checkIcon: { fontSize: 16, color: '#1565C0', fontWeight: 'bold' },
-  closeModalBtn: { marginTop: 16, backgroundColor: '#1565C0', paddingVertical: 12, borderRadius: 12, alignItems: 'center' },
-  closeModalBtnText: { color: '#fff', fontSize: 14, fontWeight: 'bold' }
+  dangerZoneContainer: { marginHorizontal: 24, backgroundColor: '#FFEBEE', borderRadius: 16, paddingHorizontal: 16 },
+  dangerItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 16 },
+  dangerText: { fontSize: 15, fontWeight: '600', color: '#D32F2F' },
+  dangerDivider: { height: 1, backgroundColor: '#FFCDD2', marginLeft: 36 },
+
+  modalBackground: { flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', flexDirection: 'column', justifyContent: 'center' },
+  modalCloseArea: { flex: 1 },
+  modalContent: { alignItems: 'center', paddingVertical: 20 },
+  fullImageAvatar: { width: 220, height: 220, borderRadius: 110, borderWidth: 1, borderColor: '#E8ECF0' }, 
+  fullImageAvatarPlaceholder: { width: 220, height: 220, borderRadius: 110, backgroundColor: '#333', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#555' },
+  modalUbahFotoText: { marginTop: 24, fontSize: 15, fontWeight: '700', color: '#fff', textDecorationLine: 'underline' }
 });

@@ -70,7 +70,7 @@ export default function KeranjangScreen({ route, navigation }) {
       {isTab ? (
         <View style={styles.headerTab}>
           <Text style={styles.headerTitleTab}>Keranjang</Text>
-          <Text style={styles.headerSubTab}>Pesanan dari {toko.nama}</Text>
+          <Text style={styles.headerSubTab}>Dari kantin {toko.nama}</Text>
         </View>
       ) : (
         <View style={styles.header}>
@@ -79,7 +79,7 @@ export default function KeranjangScreen({ route, navigation }) {
           </TouchableOpacity>
           <View style={styles.headerCenter}>
             <Text style={styles.headerTitle}>Keranjang</Text>
-            <Text style={styles.headerSub}>Pesanan dari {toko.nama}</Text>
+            <Text style={styles.headerSub}>Dari kantin {toko.nama}</Text>
           </View>
         </View>
       )}
