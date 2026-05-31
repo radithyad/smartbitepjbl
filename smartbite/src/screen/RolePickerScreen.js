@@ -1,14 +1,10 @@
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function RolePickerScreen({ navigation }) {
   return (
     <View style={styles.container}>
-
-      {/* Back */}
-      <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()} activeOpacity={0.8}>
-        <Text style={styles.backIcon}>‹</Text>
-      </TouchableOpacity>
 
       {/* Content */}
       <View style={styles.content}>
@@ -29,14 +25,14 @@ export default function RolePickerScreen({ navigation }) {
             end={{ x: 1, y: 1 }}
           >
             <View style={styles.cardIconWrapper}>
-              <Text style={styles.cardIcon}>🎓</Text>
+              <Ionicons name="school" size={28} color="#1565C0" />
             </View>
             <View style={styles.cardInfo}>
               <Text style={styles.cardTitle}>Customer</Text>
               <Text style={styles.cardDesc}>Pesan makanan dari kantin kampus dengan mudah dan cepat</Text>
             </View>
             <View style={styles.cardArrow}>
-              <Text style={styles.cardArrowText}>›</Text>
+              <Ionicons name="chevron-forward" size={18} color="#888" />
             </View>
           </LinearGradient>
         </TouchableOpacity>
@@ -54,19 +50,19 @@ export default function RolePickerScreen({ navigation }) {
             end={{ x: 1, y: 1 }}
           >
             <View style={[styles.cardIconWrapper, { backgroundColor: '#FFE082' }]}>
-              <Text style={styles.cardIcon}>🏪</Text>
+              <Ionicons name="storefront" size={26} color="#F57F17" />
             </View>
             <View style={styles.cardInfo}>
               <Text style={styles.cardTitle}>Penjual / Mitra</Text>
               <Text style={styles.cardDesc}>Buka toko di SmartBite dan jangkau lebih banyak pembeli</Text>
             </View>
             <View style={styles.cardArrow}>
-              <Text style={styles.cardArrowText}>›</Text>
+               <Ionicons name="chevron-forward" size={18} color="#888" />
             </View>
           </LinearGradient>
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => navigation.navigate('Login')} style={styles.loginLink}>
+        <TouchableOpacity onPress={() => navigation.navigate('Login')} style={styles.loginLink} activeOpacity={0.7}>
           <Text style={styles.loginLinkText}>Sudah punya akun? <Text style={styles.loginLinkBold}>Masuk disini</Text></Text>
         </TouchableOpacity>
 
@@ -84,7 +80,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center',
     elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 4,
   },
-  backIcon: { fontSize: 26, color: '#1A1A1A', lineHeight: 30, marginTop: -2 },
 
   content: { flex: 1, justifyContent: 'center', paddingHorizontal: 24, paddingBottom: 40 },
 
@@ -95,7 +90,7 @@ const styles = StyleSheet.create({
     borderRadius: 20, marginBottom: 16,
     elevation: 3, shadowColor: '#000',
     shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.08, shadowRadius: 10,
-    overflow: 'hidden',
+    overflow: 'hidden', // Biar background gradient gak keluar dari border radius
   },
   cardGradient: {
     flexDirection: 'row', alignItems: 'center',
@@ -108,22 +103,16 @@ const styles = StyleSheet.create({
     backgroundColor: '#DCEEFF',
     justifyContent: 'center', alignItems: 'center', marginRight: 16,
   },
-  cardIcon: { fontSize: 28 },
 
   cardInfo: { flex: 1 },
   cardTitle: { fontSize: 17, fontWeight: 'bold', color: '#1A1A1A', marginBottom: 5 },
   cardDesc: { fontSize: 12, color: '#888', lineHeight: 18, marginBottom: 10 },
-
-  cardBadgeRow: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
-  cardBadge: { backgroundColor: '#EEF5FF', borderRadius: 100, paddingHorizontal: 10, paddingVertical: 4 },
-  cardBadgeText: { fontSize: 10, fontWeight: '600', color: '#1565C0' },
 
   cardArrow: {
     width: 28, height: 28, borderRadius: 14,
     backgroundColor: 'rgba(0,0,0,0.05)',
     justifyContent: 'center', alignItems: 'center', marginLeft: 8,
   },
-  cardArrowText: { fontSize: 20, color: '#888', marginTop: -2 },
 
   loginLink: { marginTop: 8, alignItems: 'center' },
   loginLinkText: { fontSize: 14, color: '#888' },

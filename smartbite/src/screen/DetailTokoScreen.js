@@ -7,6 +7,7 @@ import { useState, useEffect, useContext } from 'react';
 import { api } from '../service/api';
 import { CartContext } from '../context/CartContext';
 import FloatingCart from '../component/FloatingCart';
+import { Ionicons } from '@expo/vector-icons';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const HEADER_HEIGHT = 280;
@@ -33,7 +34,6 @@ export default function DetailTokoScreen({ route, navigation }) {
   const [menuList, setMenuList] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // 🔥 Tarik data keranjang dari Global Context
   const { keranjang, setKeranjang, toko: globalToko, setToko: setGlobalToko, setMenuList: setGlobalMenuList } = useContext(CartContext);
 
   useEffect(() => {
@@ -53,8 +53,6 @@ export default function DetailTokoScreen({ route, navigation }) {
 
   const { buka: waktuBuka, info } = cekJamOperasional(toko?.jam_buka, toko?.jam_tutup);
   const isBuka = (toko?.aktif !== false) && waktuBuka;
-
-  // Cek apakah toko yang lagi dibuka ini sama dengan toko yang ada di keranjang global
   const isCurrentToko = globalToko ? (globalToko._id || globalToko.id) === (toko._id || toko.id) : true;
 
   const tambahMenu = (menu) => {
@@ -62,7 +60,6 @@ export default function DetailTokoScreen({ route, navigation }) {
 
     const menuId = menu._id || menu.id;
 
-    // 🔥 LOGIKA KALO PESAN DARI TOKO BERBEDA
     if (globalToko && !isCurrentToko && Object.keys(keranjang).length > 0) {
       Alert.alert(
         'Ganti Pesanan?',
@@ -75,7 +72,7 @@ export default function DetailTokoScreen({ route, navigation }) {
             onPress: () => {
               setGlobalToko(toko);
               setGlobalMenuList(menuList); 
-              setKeranjang({ [menuId]: 1 }); // Hapus keranjang lama, masukin yang baru
+              setKeranjang({ [menuId]: 1 }); 
             }
           }
         ]
@@ -100,7 +97,6 @@ export default function DetailTokoScreen({ route, navigation }) {
       const updated = { ...prev, [menuId]: prev[menuId] - 1 };
       if (updated[menuId] === 0) delete updated[menuId];
       
-      // Kalo keranjang jadi kosong, lepas ikatan tokonya
       if (Object.keys(updated).length === 0) {
         setGlobalToko(null);
         setGlobalMenuList([]);
@@ -123,11 +119,15 @@ export default function DetailTokoScreen({ route, navigation }) {
       {toko.foto_url ? (
         <Image source={{ uri: toko.foto_url }} style={styles.headerImage} resizeMode="cover" />
       ) : (
-        <View style={styles.headerImageFallback}><Text style={styles.headerFallbackEmoji}>{toko.emoji}</Text></View>
+        <View style={styles.headerImageFallback}>
+           {/* 🔥 Fallback icon toko */}
+           <Ionicons name="storefront" size={60} color="#1565C0" />
+        </View>
       )}
       <LinearGradient colors={['transparent', 'rgba(0,0,0,0.35)']} style={styles.headerGradientOverlay} />
       <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()} activeOpacity={0.8}>
-        <Text style={styles.backIcon}>‹</Text>
+        {/* 🔥 Ganti jadi icon chevron */}
+        <Ionicons name="chevron-back" size={24} color="#1a1a1a" />
       </TouchableOpacity>
     </View>
 
@@ -139,14 +139,29 @@ export default function DetailTokoScreen({ route, navigation }) {
         </View>
       </View>
       <Text style={styles.tokoKategori}>{toko.kategori}</Text>
+      
+      {/* 🔥 Meta Info pakai Ionicons */}
       <View style={styles.metaRow}>
-        <View style={styles.metaItem}><Text style={styles.metaEmoji}>⭐</Text><Text style={styles.metaText}>{toko.rating || 'Baru'}</Text></View>
+        <View style={styles.metaItem}>
+          <Ionicons name="star" size={14} color="#FFC107" />
+          <Text style={styles.metaText}>{toko.rating || 'Baru'}</Text>
+        </View>
         <View style={styles.metaDivider} />
-        <View style={styles.metaItem}><Text style={styles.metaEmoji}>⏱</Text><Text style={styles.metaText}>{toko.estimasi || '10-15'} mnt</Text></View>
+        <View style={styles.metaItem}>
+          <Ionicons name="time-outline" size={14} color="#888" />
+          <Text style={styles.metaText}>{toko.estimasi || '10-15'} mnt</Text>
+        </View>
         {info ? (
-          <><View style={styles.metaDivider} /><View style={styles.metaItem}><Text style={styles.metaEmoji}>🕐</Text><Text style={styles.metaText}>{info}</Text></View></>
+          <>
+            <View style={styles.metaDivider} />
+            <View style={styles.metaItem}>
+              <Ionicons name="information-circle-outline" size={15} color="#888" />
+              <Text style={styles.metaText}>{info}</Text>
+            </View>
+          </>
         ) : null}
       </View>
+
       <View style={styles.divider} />
       <Text style={styles.sectionTitle}>Menu Tersedia</Text>
     </View>
@@ -154,11 +169,14 @@ export default function DetailTokoScreen({ route, navigation }) {
     <ScrollView style={styles.menuScroll} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
       <View style={styles.menuContainer}>
         {menuList.length === 0 ? (
-          <View style={styles.emptyState}><Text style={styles.emptyEmoji}>🍽️</Text><Text style={styles.emptyText}>Belum ada menu tersedia</Text></View>
+          <View style={styles.emptyState}>
+             {/* 🔥 Empty state pakai icon */}
+             <Ionicons name="restaurant-outline" size={40} color="#ccc" style={{ marginBottom: 8 }} />
+             <Text style={styles.emptyText}>Belum ada menu tersedia</Text>
+          </View>
         ) : (
           menuList.map((menu) => {
             const menuId = menu._id || menu.id;
-            // 💡 Cuma tampilin angka keranjang kalo toko yang diliat = toko di keranjang
             const qty = isCurrentToko ? (keranjang[menuId] || 0) : 0;
 
             return (
@@ -167,7 +185,8 @@ export default function DetailTokoScreen({ route, navigation }) {
                   {menu.foto_url ? (
                     <Image source={{ uri: menu.foto_url }} style={styles.menuImage} resizeMode="cover" />
                   ) : (
-                    <Text style={[styles.menuEmoji, !menu.tersedia && { opacity: 0.4 }]}>{menu.emoji || '🍽️'}</Text>
+                    /* 🔥 Fallback icon menu */
+                    <Ionicons name="fast-food" size={28} color="#1565C0" style={[!menu.tersedia && { opacity: 0.4 }]} />
                   )}
                   {!menu.tersedia && <View style={styles.habisOverlay}><Text style={styles.habisOverlayText}>Habis</Text></View>}
                 </View>
@@ -200,9 +219,7 @@ export default function DetailTokoScreen({ route, navigation }) {
       </View>
     </ScrollView>
 
-    {/* 🔥 MASUKIN FLOATING CART-NYA DI SINI (Posisi paling bawah) */}
     <FloatingCart bottom={24} />
-
   </View>
 );
 }
@@ -211,11 +228,9 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
   headerImageContainer: { width: SCREEN_WIDTH, height: HEADER_HEIGHT, position: 'absolute', top: 0, left: 0, zIndex: 0 },
   headerImage: { width: '100%', height: '100%' },
-  headerImageFallback: { width: '100%', height: '100%', backgroundColor: '#E3F2FD', justifyContent: 'center', alignItems: 'center' },
-  headerFallbackEmoji: { fontSize: 80 },
+  headerImageFallback: { width: '100%', height: '100%', backgroundColor: '#F0F4FF', justifyContent: 'center', alignItems: 'center' }, // Ubah warna fallback biar kalem
   headerGradientOverlay: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 100 },
   backButton: { position: 'absolute', top: 52, left: 16, width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.9)', justifyContent: 'center', alignItems: 'center', elevation: 3 },
-  backIcon: { fontSize: 26, color: '#1a1a1a', lineHeight: 30, marginTop: -2 },
   menuScroll: { flex: 1 },
   tokoInfoCard: { backgroundColor: '#fff', borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingHorizontal: 20, paddingTop: 24, paddingBottom: 8, marginTop: HEADER_HEIGHT - 28 },
   namaRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
@@ -225,11 +240,12 @@ const styles = StyleSheet.create({
   tutupBadge: { backgroundColor: '#FFEBEE' },
   statusText: { fontSize: 12, fontWeight: '700' },
   tokoKategori: { fontSize: 13, color: '#888', marginBottom: 12 },
+  
   metaRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 4 },
   metaItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  metaEmoji: { fontSize: 14 },
   metaText: { fontSize: 13, color: '#555', fontWeight: '500' },
-  metaDivider: { width: 1, height: 14, backgroundColor: '#E0E0E0', marginHorizontal: 8 },
+  metaDivider: { width: 4, height: 4, borderRadius: 2, backgroundColor: '#CCC', marginHorizontal: 6 }, // Divider diganti titik bulat
+
   divider: { height: 1, backgroundColor: '#F0F0F0', marginBottom: 16 },
   sectionTitle: { fontSize: 17, fontWeight: 'bold', color: '#1a1a1a', marginBottom: 4 },
   menuContainer: { backgroundColor: '#fff', paddingHorizontal: 20, paddingTop: 8 },
@@ -237,7 +253,6 @@ const styles = StyleSheet.create({
   menuCardHabis: { opacity: 0.55 },
   menuImageBox: { width: 72, height: 72, borderRadius: 16, backgroundColor: '#F5F7FA', justifyContent: 'center', alignItems: 'center', marginRight: 14, overflow: 'hidden', position: 'relative' },
   menuImage: { width: 72, height: 72 },
-  menuEmoji: { fontSize: 34 },
   habisOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center' },
   habisOverlayText: { color: '#fff', fontSize: 11, fontWeight: 'bold' },
   menuInfo: { flex: 1 },
@@ -253,6 +268,5 @@ const styles = StyleSheet.create({
   counterBtnText: { fontSize: 18, color: '#1565C0', fontWeight: 'bold', lineHeight: 22 },
   counterNum: { fontSize: 15, fontWeight: 'bold', color: '#1a1a1a', minWidth: 20, textAlign: 'center' },
   emptyState: { alignItems: 'center', paddingVertical: 40 },
-  emptyEmoji: { fontSize: 40, marginBottom: 8 },
   emptyText: { fontSize: 13, color: '#aaa' },
 });

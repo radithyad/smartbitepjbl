@@ -4,7 +4,7 @@ import { Platform } from 'react-native';
 
 // 👉 GANTI '192.168.X.X' DENGAN IP LAPTOP KAMU!
 // Wajib pakai http:// (bukan https) dan ujungnya wajib :5000/api
-const BASE_URL = 'http://192.168.1.4:5000/api'; // Contoh: 'http://192.168.X.X:5000/api'
+const BASE_URL = 'http://192.168.1.7:5000/api'; // Contoh: 'http://192.168.X.X:5000/api'
 
 export const api = axios.create({
   baseURL: BASE_URL,

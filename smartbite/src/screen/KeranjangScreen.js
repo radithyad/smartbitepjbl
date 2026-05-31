@@ -137,7 +137,6 @@ export default function KeranjangScreen({ route, navigation }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
   
-  // 🔥 STYLES HEADER NORMAL (Stack Screen)
   header: { flexDirection: 'row', alignItems: 'center', paddingTop: 55, paddingBottom: 16, paddingHorizontal: 16, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#F0F0F0' },
   backButton: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#F5F7FA', justifyContent: 'center', alignItems: 'center', marginRight: 12 },
   backIcon: { fontSize: 26, color: '#1a1a1a', lineHeight: 30, marginTop: -2 },
@@ -145,12 +144,17 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 18, fontWeight: 'bold', color: '#1a1a1a' },
   headerSub: { fontSize: 12, color: '#888', marginTop: 1 },
   
-  // 🔥 STYLES HEADER TAB BARU
   headerTab: { paddingTop: 60, paddingBottom: 16, paddingHorizontal: 20, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#F0F0F0' },
   headerTitleTab: { fontSize: 24, fontWeight: 'bold', color: '#1a1a1a' },
   headerSubTab: { fontSize: 13, color: '#888', marginTop: 2 },
 
-  emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  // 🔥 UPDATE DI SINI: Tambahan paddingBottom biar konten terdorong ke atas
+  emptyContainer: { 
+    flex: 1, 
+    justifyContent: 'center', 
+    alignItems: 'center',
+    paddingBottom: 120 
+  },
   emptyEmoji: { fontSize: 60, marginBottom: 16 },
   emptyText: { fontSize: 16, color: '#888', marginBottom: 10 },
   emptyLink: { fontSize: 14, color: '#1565C0', fontWeight: '600' },

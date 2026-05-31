@@ -258,7 +258,7 @@ export default function ProfilScreen({ navigation, onLogout }) {
       
       {/* HEADER */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Profil Sosial</Text>
+        <Text style={styles.headerTitle}>Profil</Text>
         <TouchableOpacity 
           onPress={handleSimpan} 
           disabled={!isModified || saving} 
